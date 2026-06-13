@@ -9,6 +9,7 @@
     --ink: #1C1209;
     --ink2: #3D2B1A;
     --ink3: #6B4F38;
+    --nav-tab-muted: rgba(240,232,216,0.6);
     --parchment: #F8F3E9;
     --parchment2: #F2EAD8;
     --parchment3: #E8DEC8;
@@ -41,6 +42,7 @@
       --ink: #F0E8D8;
       --ink2: #D4C4A8;
       --ink3: #A89070;
+      --nav-tab-muted: rgba(28,18,9,0.6);
       --parchment: #1C1510;
       --parchment2: #241C14;
       --parchment3: #2E241A;
@@ -55,6 +57,8 @@
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { overflow-x: hidden; }
 
   body {
     font-family: var(--font-sans);
@@ -96,7 +100,7 @@
     border-radius: var(--radius);
     cursor: pointer;
     font-size: 13px;
-    color: rgba(240,232,216,0.6);
+    color: var(--nav-tab-muted);
     white-space: nowrap;
     border: none;
     background: none;
@@ -587,6 +591,33 @@
     #sidebar { display: none; }
     .grid-3 { grid-template-columns: 1fr; }
     .form-row { grid-template-columns: 1fr; }
+
+    /* Header: split into two rows so action icons never get pushed off-screen */
+    #app-header {
+      flex-wrap: wrap;
+      height: auto;
+      padding: 8px 12px;
+      gap: 8px;
+      row-gap: 6px;
+    }
+    #app-header .logo { font-size: 17px; }
+    #app-header .logo span { font-size: 11px; }
+
+    /* Nav tabs move to their own full-width, horizontally-scrollable row */
+    #nav-tabs {
+      order: 1;
+      flex: 1 1 100%;
+      margin-left: 0;
+      gap: 0;
+      -webkit-overflow-scrolling: touch;
+    }
+    .nav-tab { padding: 6px 10px; font-size: 12px; }
+    .nav-tab .ti { font-size: 14px; }
+
+    /* Trim action row so it fits beside the logo */
+    #header-actions { gap: 6px; }
+    .icon-btn { width: 28px; height: 28px; font-size: 14px; }
+    #sync-label { display: none; }
   }
 </style>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
