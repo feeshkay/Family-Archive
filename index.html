@@ -860,7 +860,7 @@
             <i class="ti ti-search"></i>
             <input class="form-input" id="people-search" placeholder="Search names, dates, places…" style="width:240px;" oninput="filterPeople(this.value)">
           </div>
-          <select class="form-select" style="width:130px;" id="people-sort">
+          <select class="form-select" style="width:130px;" id="people-sort" onchange="renderPeople()">
             <option value="name">Sort: Name</option>
             <option value="birth">Sort: Birth year</option>
             <option value="added">Sort: Date added</option>
@@ -884,7 +884,7 @@
           <div class="panel-subtitle">Chronological events across all family lines</div>
         </div>
         <div class="panel-actions">
-          <select class="form-select" style="width:160px;" id="timeline-person-filter">
+          <select class="form-select" style="width:160px;" id="timeline-person-filter" onchange="renderTimeline()">
             <option value="">All people</option>
           </select>
           <select class="form-select" style="width:130px;" id="timeline-type-filter" onchange="renderTimeline()">
@@ -1332,7 +1332,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('add-person-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="savePerson()"><i class="ti ti-check"></i> Save Person</button>
+      <button class="btn btn-primary" id="ap-save-btn" onclick="savePerson()"><i class="ti ti-check"></i> Save Person</button>
     </div>
   </div>
 </div>
@@ -1850,34 +1850,25 @@
     </div>
     <div class="modal-body">
       <div style="background:var(--parchment2);border:1px solid var(--border);border-radius:var(--radius2);padding:16px;margin-bottom:16px;">
-        <div style="font-weight:500;margin-bottom:8px;display:flex;align-items:center;gap:8px;"><i class="ti ti-info-circle" style="color:var(--gold)"></i> How Ancestry sync works</div>
+        <div style="font-weight:500;margin-bottom:8px;display:flex;align-items:center;gap:8px;"><i class="ti ti-info-circle" style="color:var(--gold)"></i> Ancestry.com Integration</div>
         <div style="font-size:13px;color:var(--ink3);line-height:1.6;">
-          Connect your Ancestry account via a personal access token. This enables importing hints, records, and tree data into FamilyArchive Pro. Full two-way sync requires an Ancestry All Access subscription.
+          Direct API sync with Ancestry.com is not available in this version — Ancestry does not offer a public API for third-party apps. The best way to move data between Ancestry and FamilyArchive Pro is via <strong>GEDCOM export</strong>.
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Ancestry OAuth Token</label>
-        <input class="form-input" id="ancestry-token" type="password" placeholder="Paste your Ancestry API token here">
-        <div class="text-sm text-muted mt-8">
-          Get your token at <a href="https://www.ancestry.com/cs/developer" target="_blank" style="color:var(--gold)">ancestry.com/cs/developer</a>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;">
+          <div style="font-weight:500;font-size:13px;margin-bottom:6px;display:flex;align-items:center;gap:8px;"><i class="ti ti-download" style="color:var(--gold)"></i> Import from Ancestry</div>
+          <div style="font-size:12px;color:var(--ink3);line-height:1.6;">In Ancestry: open your tree → Settings → Export Tree → Download .ged file. Then use the <strong>Import</strong> button (⬆ in the header) to load it here.</div>
         </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Tree ID (optional)</label>
-        <input class="form-input" id="ancestry-tree-id" placeholder="Your Ancestry tree ID (from tree URL)">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Sync Direction</label>
-        <select class="form-select" id="ancestry-sync-dir">
-          <option value="pull">Pull only (import hints &amp; data from Ancestry)</option>
-          <option value="push">Push only (export this archive to Ancestry)</option>
-          <option value="both">Two-way sync</option>
-        </select>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;">
+          <div style="font-weight:500;font-size:13px;margin-bottom:6px;display:flex;align-items:center;gap:8px;"><i class="ti ti-upload" style="color:var(--gold)"></i> Export to Ancestry</div>
+          <div style="font-size:12px;color:var(--ink3);line-height:1.6;">Use <strong>Reports → GEDCOM (.ged)</strong> to export your archive, then import that file into Ancestry via your tree's Member Connect or Import feature.</div>
+        </div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeModal('ancestry-modal')">Cancel</button>
-      <button class="btn btn-gold" onclick="saveAncestrySettings()"><i class="ti ti-refresh"></i> Save &amp; Connect</button>
+    <div class="modal-footer" style="justify-content:space-between;align-items:center;">
+      <div style="font-size:12px;color:var(--ink3);"><i class="ti ti-info-circle"></i> Use the <strong>Import</strong> button to bring in a GEDCOM export from Ancestry.</div>
+      <button class="btn" onclick="closeModal('ancestry-modal')">Close</button>
     </div>
   </div>
 </div>
@@ -2536,7 +2527,109 @@ function deletePerson(id) {
 }
 
 function editPerson(id) {
-  alert('To edit, delete and re-add this person. Full inline editing coming in a future update!');
+  const p = DB.people.find(x => x.id === id);
+  if (!p) return;
+
+  // Populate the add-person modal with existing data
+  document.getElementById('ap-firstname').value = p.firstName || '';
+  document.getElementById('ap-lastname').value = p.lastName || '';
+  document.getElementById('ap-middlename').value = p.middleName || '';
+  document.getElementById('ap-gender').value = p.gender || '';
+  document.getElementById('ap-status').value = p.status || 'unknown';
+  document.getElementById('ap-birthdate').value = p.birthDate || '';
+  document.getElementById('ap-birthplace').value = p.birthPlace || '';
+  document.getElementById('ap-deathdate').value = p.deathDate || '';
+  document.getElementById('ap-deathplace').value = p.deathPlace || '';
+  document.getElementById('ap-occupation').value = p.occupation || '';
+  document.getElementById('ap-religion').value = p.religion || '';
+  document.getElementById('ap-aka').value = p.aka || '';
+  document.getElementById('ap-education').value = p.education || '';
+  document.getElementById('ap-bio').value = p.bio || '';
+  document.getElementById('ap-dna').value = p.dna || '';
+  document.getElementById('ap-family-line').value = p.familyLine || '';
+  document.getElementById('ap-tags').value = (p.tags || []).join(', ');
+
+  // Show existing photo in preview
+  const preview = document.getElementById('ap-photo-preview');
+  if (p.photo) {
+    preview.innerHTML = `<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  } else {
+    preview.innerHTML = '<i class="ti ti-user" style="font-size:24px;color:var(--ink3)"></i>';
+  }
+
+  // Change modal title and save button to "edit" mode
+  const modal = document.getElementById('add-person-modal');
+  modal.querySelector('.modal-title').textContent = 'Edit Person';
+  const saveBtn = document.getElementById('ap-save-btn');
+  saveBtn.innerHTML = '<i class="ti ti-check"></i> Save Changes';
+  saveBtn.onclick = () => updatePerson(id);
+
+  closeModal('person-full-modal');
+  openModal('add-person-modal');
+}
+
+function updatePerson(id) {
+  const p = DB.people.find(x => x.id === id);
+  if (!p) return;
+
+  const oldBirthDate = p.birthDate;
+  const oldDeathDate = p.deathDate;
+
+  p.firstName = document.getElementById('ap-firstname').value.trim();
+  p.lastName  = document.getElementById('ap-lastname').value.trim();
+  p.middleName = document.getElementById('ap-middlename').value.trim();
+  p.gender    = document.getElementById('ap-gender').value;
+  p.status    = document.getElementById('ap-status').value;
+  p.birthDate = document.getElementById('ap-birthdate').value.trim();
+  p.birthPlace = document.getElementById('ap-birthplace').value.trim();
+  p.deathDate = document.getElementById('ap-deathdate').value.trim();
+  p.deathPlace = document.getElementById('ap-deathplace').value.trim();
+  p.occupation = document.getElementById('ap-occupation').value.trim();
+  p.religion  = document.getElementById('ap-religion').value.trim();
+  p.aka       = document.getElementById('ap-aka').value.trim();
+  p.education = document.getElementById('ap-education').value.trim();
+  p.bio       = document.getElementById('ap-bio').value.trim();
+  p.dna       = document.getElementById('ap-dna').value.trim();
+  p.familyLine = document.getElementById('ap-family-line').value.trim();
+  p.tags      = document.getElementById('ap-tags').value.split(',').map(t => t.trim()).filter(Boolean);
+
+  const previewImg = document.querySelector('#ap-photo-preview img');
+  if (previewImg) p.photo = previewImg.src;
+
+  // Sync auto-created birth/death events
+  if (!p.firstName && !p.lastName) { alert('Please enter at least a first or last name.'); return; }
+
+  if (p.birthDate !== oldBirthDate) {
+    DB.events = DB.events.filter(e => !(e.personId === id && e.type === 'birth'));
+    if (p.birthDate) DB.events.push({ id: genId(), personId: id, type: 'birth', date: p.birthDate, place: p.birthPlace, confidence: 'certain', desc: '', source: '' });
+  } else {
+    // Update place on existing birth event if it exists
+    const be = DB.events.find(e => e.personId === id && e.type === 'birth');
+    if (be) be.place = p.birthPlace;
+  }
+  if (p.deathDate !== oldDeathDate) {
+    DB.events = DB.events.filter(e => !(e.personId === id && e.type === 'death'));
+    if (p.deathDate) DB.events.push({ id: genId(), personId: id, type: 'death', date: p.deathDate, place: p.deathPlace, confidence: 'certain', desc: '', source: '' });
+  } else {
+    const de = DB.events.find(e => e.personId === id && e.type === 'death');
+    if (de) de.place = p.deathPlace;
+  }
+
+  save();
+
+  // Reset modal back to "add" mode
+  document.getElementById('add-person-modal').querySelector('.modal-title').textContent = 'Add New Person';
+  const saveBtn = document.getElementById('ap-save-btn');
+  saveBtn.innerHTML = '<i class="ti ti-check"></i> Save Person';
+  saveBtn.onclick = savePerson;
+
+  closeModal('add-person-modal');
+  clearPersonForm();
+  renderPeople();
+  updateTreeRootSelect();
+  renderDashRecent();
+  updateSidebarStats();
+  openPersonDetail(id);
 }
 
 // ── EVENTS ──────────────────────────────────────────────────────
@@ -4070,11 +4163,6 @@ document.addEventListener('click', e => {
 
 // ── Keep old Ancestry function working (for settings panel)
 function saveAncestrySettings() {
-  DB.settings.ancestryToken   = (document.getElementById('ancestry-token')?.value  || '').trim();
-  DB.settings.ancestryTreeId  = (document.getElementById('ancestry-tree-id')?.value || '').trim();
-  DB.settings.ancestrySyncDir = document.getElementById('ancestry-sync-dir')?.value || 'pull';
-  save();
-  updateSyncIndicator(!!DB.settings.ancestryToken);
   closeModal('ancestry-modal');
 }
 
@@ -4371,7 +4459,13 @@ function generateReport(type) {
   }
 
   else if (type === 'biography') {
-    const person = DB.people[0]; // Use first person; in full app, would prompt for selection
+    const sorted = [...DB.people].sort((a,b) => fullName(a).localeCompare(fullName(b)));
+    const options = sorted.map(p => `${fullName(p)}${p.birthDate ? ' (b. ' + p.birthDate + ')' : ''}`);
+    const chosen = prompt('Choose a person for the biography:\n\n' + options.map((o,i) => `${i+1}. ${o}`).join('\n') + '\n\nEnter a number:');
+    if (!chosen) return;
+    const idx = parseInt(chosen) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= sorted.length) { alert('Invalid selection.'); return; }
+    const person = sorted[idx];
     const personEvents = DB.events.filter(e=>e.personId===person.id).sort((a,b)=>(parseInt(a.date?.split(' ').pop())||0)-(parseInt(b.date?.split(' ').pop())||0));
     const personDocs = DB.documents.filter(d=>(d.peopleIds||[]).includes(person.id));
     const rels = DB.relationships.filter(r=>r.person1Id===person.id||r.person2Id===person.id);
@@ -4444,10 +4538,23 @@ function generateReport(type) {
   else if (type === 'family-group') {
     const couples = DB.relationships.filter(r=>r.type==='spouse');
     if (!couples.length) {
-      // Fall back to showing all people as single family group
       generateReport('pedigree'); return;
     }
-    const couple = couples[0];
+    let couple;
+    if (couples.length === 1) {
+      couple = couples[0];
+    } else {
+      const options = couples.map((c, i) => {
+        const p1 = DB.people.find(x=>x.id===c.person1Id);
+        const p2 = DB.people.find(x=>x.id===c.person2Id);
+        return `${i+1}. ${p1?fullName(p1):'Unknown'} & ${p2?fullName(p2):'Unknown'}${c.marriageDate?' (m. '+c.marriageDate+')':''}`;
+      });
+      const chosen = prompt('Choose a couple for the Family Group Sheet:\n\n' + options.join('\n') + '\n\nEnter a number:');
+      if (!chosen) return;
+      const idx = parseInt(chosen) - 1;
+      if (isNaN(idx) || idx < 0 || idx >= couples.length) { alert('Invalid selection.'); return; }
+      couple = couples[idx];
+    }
     const p1 = DB.people.find(x=>x.id===couple.person1Id);
     const p2 = DB.people.find(x=>x.id===couple.person2Id);
     const children = DB.relationships.filter(r=>r.type==='parent'&&(r.person1Id===couple.person1Id||r.person1Id===couple.person2Id)).map(r=>DB.people.find(x=>x.id===r.person2Id)).filter(Boolean);
