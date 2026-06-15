@@ -526,6 +526,35 @@
   .tree-ctrl:hover { background: var(--parchment2); }
 
   /* ── COMMUNICATIONS ── */
+  /* Add-person modal tabs */
+  .ap-tab { background: none; border: none; padding: 10px 16px; font-size: 13px; color: var(--ink3); cursor: pointer; border-bottom: 2px solid transparent; display: flex; align-items: center; gap: 6px; transition: color .15s; }
+  .ap-tab.active { color: var(--gold); border-bottom-color: var(--gold); font-weight: 600; }
+  .ap-tab:hover:not(.active) { color: var(--ink); }
+  /* Fact confidence row */
+  .fact-confidence-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .form-select-sm { padding: 4px 8px; font-size: 12px; height: 30px; }
+  /* Confidence badges */
+  .conf-certain  { color: #2e7d32; background: #e8f5e9; border: 1px solid #a5d6a7; padding: 1px 7px; border-radius: 3px; font-size: 11px; font-weight: 600; }
+  .conf-probable { color: #f57f17; background: #fff8e1; border: 1px solid #ffe082; padding: 1px 7px; border-radius: 3px; font-size: 11px; font-weight: 600; }
+  .conf-possible { color: #e65100; background: #fff3e0; border: 1px solid #ffcc80; padding: 1px 7px; border-radius: 3px; font-size: 11px; font-weight: 600; }
+  .conf-estimated{ color: var(--ink3); background: var(--parchment3); border: 1px solid var(--border2); padding: 1px 7px; border-radius: 3px; font-size: 11px; font-weight: 600; }
+  /* Family builder cards */
+  .family-builder-card { background: var(--parchment2); border: 1px solid var(--border); border-radius: var(--radius2); padding: 14px; margin-bottom: 14px; }
+  .fb-card-header { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; margin-bottom: 12px; color: var(--ink); }
+  .fb-sibling-row, .fb-child-row { display: grid; grid-template-columns: 1fr 1fr 100px 32px; gap: 8px; align-items: end; margin-bottom: 8px; }
+  /* FAN entries */
+  .fan-row { display: grid; grid-template-columns: 1fr 130px 1fr 32px; gap: 8px; align-items: end; margin-bottom: 8px; }
+  .fan-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; background: rgba(90,60,20,0.08); border: 1px solid rgba(90,60,20,0.2); color: var(--sepia); cursor: pointer; }
+  .fan-badge:hover { background: rgba(90,60,20,0.15); }
+  /* Census table */
+  .census-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+  .census-table th { background: var(--parchment3); padding: 5px 8px; text-align: left; font-size: 10px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; border: 1px solid var(--border); white-space: nowrap; }
+  .census-table td { padding: 4px 6px; border: 1px solid var(--border); }
+  .census-table td input { width: 100%; border: none; background: transparent; font-size: 12px; font-family: inherit; color: var(--ink); padding: 0; }
+  .census-table td input:focus { outline: none; background: rgba(180,130,40,0.08); border-radius: 2px; }
+  .census-table .add-row-btn { background: none; border: none; color: var(--gold); cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 4px; padding: 4px 0; }
+  .census-quick-create { font-size: 11px; color: var(--rust); cursor: pointer; white-space: nowrap; }
+  .census-quick-create:hover { text-decoration: underline; }
   .comm-item { display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--border); }
   .comm-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--parchment3); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--ink3); flex-shrink: 0; overflow: hidden; }
   .comm-avatar img { width: 100%; height: 100%; object-fit: cover; }
@@ -1218,117 +1247,239 @@
 
 <!-- ADD PERSON MODAL -->
 <div class="modal-backdrop" id="add-person-modal">
-  <div class="modal" style="max-width:680px;">
+  <div class="modal" style="max-width:700px;max-height:92vh;">
     <div class="modal-header">
       <i class="ti ti-user-plus" style="font-size:20px;color:var(--gold)"></i>
-      <div class="modal-title">Add New Person</div>
+      <div class="modal-title" id="ap-modal-title">Add New Person</div>
       <button class="modal-close" onclick="closeModal('add-person-modal')"><i class="ti ti-x"></i></button>
     </div>
-    <div class="modal-body">
-      <div class="grid-2">
-        <div class="form-group">
-          <label class="form-label">First Name</label>
-          <input class="form-input" id="ap-firstname" placeholder="First name">
+    <!-- Tab nav -->
+    <div style="display:flex;border-bottom:1px solid var(--border);padding:0 20px;background:var(--surface);">
+      <button class="ap-tab active" data-tab="core" onclick="switchApTab('core')"><i class="ti ti-user"></i> Core Info</button>
+      <button class="ap-tab" data-tab="family" onclick="switchApTab('family')"><i class="ti ti-users"></i> Family Builder</button>
+      <button class="ap-tab" data-tab="fan" onclick="switchApTab('fan')"><i class="ti ti-network"></i> FAN</button>
+    </div>
+    <div class="modal-body" style="padding-top:16px;">
+
+      <!-- CORE INFO TAB -->
+      <div id="ap-tab-core">
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">First Name</label>
+            <input class="form-input" id="ap-firstname" placeholder="First name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Last Name</label>
+            <input class="form-input" id="ap-lastname" placeholder="Last name">
+          </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Last Name</label>
-          <input class="form-input" id="ap-lastname" placeholder="Last name">
+        <div class="form-row-3">
+          <div class="form-group">
+            <label class="form-label">Middle Name / Suffix</label>
+            <input class="form-input" id="ap-middlename" placeholder="Optional">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Gender</label>
+            <select class="form-select" id="ap-gender">
+              <option value="">Unknown</option>
+              <option value="M">Male</option>
+              <option value="F">Female</option>
+              <option value="X">Non-binary</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-select" id="ap-status">
+              <option value="unknown">Unknown</option>
+              <option value="living">Living</option>
+              <option value="deceased">Deceased</option>
+            </select>
+          </div>
         </div>
-      </div>
-      <div class="form-row-3">
-        <div class="form-group">
-          <label class="form-label">Middle Name / Suffix</label>
-          <input class="form-input" id="ap-middlename" placeholder="Optional">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Gender</label>
-          <select class="form-select" id="ap-gender">
-            <option value="">Unknown</option>
-            <option value="M">Male</option>
-            <option value="F">Female</option>
-            <option value="X">Non-binary</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Status</label>
-          <select class="form-select" id="ap-status">
-            <option value="unknown">Unknown</option>
-            <option value="living">Living</option>
-            <option value="deceased">Deceased</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Birth Date</label>
-          <input class="form-input" id="ap-birthdate" type="text" placeholder="e.g. 14 Mar 1923">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Birth Place</label>
-          <input class="form-input" id="ap-birthplace" placeholder="City, State, Country">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Death Date</label>
-          <input class="form-input" id="ap-deathdate" type="text" placeholder="e.g. 5 Jun 1987">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Death Place</label>
-          <input class="form-input" id="ap-deathplace" placeholder="City, State, Country">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Occupation</label>
-          <input class="form-input" id="ap-occupation" placeholder="Profession / occupation">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Religion</label>
-          <input class="form-input" id="ap-religion" placeholder="Religious affiliation">
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Also Known As (AKA / Nicknames)</label>
-        <input class="form-input" id="ap-aka" placeholder="Comma-separated, e.g. Grandpa Joe, J.W.">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Education</label>
-        <input class="form-input" id="ap-education" placeholder="Schools, degrees">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Bio / Notes</label>
-        <textarea class="form-textarea" id="ap-bio" placeholder="Personal notes, family stories, physical description…" rows="3"></textarea>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">DNA Kit ID</label>
-          <input class="form-input" id="ap-dna" placeholder="AncestryDNA, 23andMe, etc.">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Family Line / Surname Group</label>
-          <input class="form-input" id="ap-family-line" placeholder="e.g. Smith line, Johnson line">
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Tags</label>
-        <input class="form-input" id="ap-tags" placeholder="Comma-separated tags, e.g. immigrant, veteran, homesteader">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Profile Photo</label>
-        <div class="dropzone" id="ap-photo-drop" onclick="document.getElementById('ap-photo-file').click()" style="padding:16px;">
-          <div style="display:flex;align-items:center;gap:12px;">
-            <div id="ap-photo-preview" style="width:60px;height:60px;border-radius:50%;background:var(--parchment3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
-              <i class="ti ti-user" style="font-size:24px;color:var(--ink3)"></i>
+
+        <!-- Birth with confidence -->
+        <div style="background:var(--parchment2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:12px;">
+          <div style="font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--gold);margin-bottom:10px;"><i class="ti ti-baby-carriage"></i> Birth</div>
+          <div class="form-row" style="margin-bottom:8px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Date</label>
+              <input class="form-input" id="ap-birthdate" placeholder="e.g. 14 Mar 1923">
             </div>
-            <div>
-              <div style="font-size:13px;font-weight:500;">Click to upload a photo</div>
-              <div style="font-size:11px;color:var(--ink3);">JPG, PNG, or WEBP · Supports camera roll, device files, or drag &amp; drop</div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Place</label>
+              <input class="form-input" id="ap-birthplace" placeholder="City, State, Country">
             </div>
           </div>
-          <input type="file" id="ap-photo-file" style="display:none" accept="image/*" onchange="previewPersonPhoto(this)">
+          <div class="fact-confidence-row">
+            <label class="form-label" style="margin:0;white-space:nowrap;">Confidence:</label>
+            <select class="form-select form-select-sm" id="ap-birth-conf">
+              <option value="">— unset —</option>
+              <option value="certain">✅ Certain (primary source)</option>
+              <option value="probable">🟡 Probable (strong evidence)</option>
+              <option value="possible">🟠 Possible (some evidence)</option>
+              <option value="estimated">⬜ Estimated / calculated</option>
+            </select>
+            <select class="form-select form-select-sm" id="ap-birth-doc" style="flex:1;">
+              <option value="">Proof document…</option>
+            </select>
+          </div>
         </div>
-      </div>
+
+        <!-- Death with confidence -->
+        <div style="background:var(--parchment2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:12px;">
+          <div style="font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--gold);margin-bottom:10px;"><i class="ti ti-cross"></i> Death</div>
+          <div class="form-row" style="margin-bottom:8px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Date</label>
+              <input class="form-input" id="ap-deathdate" placeholder="e.g. 5 Jun 1987">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Place</label>
+              <input class="form-input" id="ap-deathplace" placeholder="City, State, Country">
+            </div>
+          </div>
+          <div class="fact-confidence-row">
+            <label class="form-label" style="margin:0;white-space:nowrap;">Confidence:</label>
+            <select class="form-select form-select-sm" id="ap-death-conf">
+              <option value="">— unset —</option>
+              <option value="certain">✅ Certain</option>
+              <option value="probable">🟡 Probable</option>
+              <option value="possible">🟠 Possible</option>
+              <option value="estimated">⬜ Estimated</option>
+            </select>
+            <select class="form-select form-select-sm" id="ap-death-doc" style="flex:1;">
+              <option value="">Proof document…</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Occupation</label>
+            <input class="form-input" id="ap-occupation" placeholder="Profession / occupation">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Religion</label>
+            <input class="form-input" id="ap-religion" placeholder="Religious affiliation">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Also Known As (AKA / Nicknames)</label>
+          <input class="form-input" id="ap-aka" placeholder="Comma-separated, e.g. Grandpa Joe, J.W.">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Education</label>
+          <input class="form-input" id="ap-education" placeholder="Schools, degrees">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Bio / Notes</label>
+          <textarea class="form-textarea" id="ap-bio" placeholder="Personal notes, family stories, physical description…" rows="3"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">DNA Kit ID</label>
+            <input class="form-input" id="ap-dna" placeholder="AncestryDNA, 23andMe, etc.">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Family Line</label>
+            <input class="form-input" id="ap-family-line" placeholder="e.g. Smith line">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tags</label>
+          <input class="form-input" id="ap-tags" placeholder="Comma-separated, e.g. immigrant, veteran">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Profile Photo</label>
+          <div class="dropzone" id="ap-photo-drop" onclick="document.getElementById('ap-photo-file').click()" style="padding:16px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div id="ap-photo-preview" style="width:60px;height:60px;border-radius:50%;background:var(--parchment3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+                <i class="ti ti-user" style="font-size:24px;color:var(--ink3)"></i>
+              </div>
+              <div>
+                <div style="font-size:13px;font-weight:500;">Click to upload a photo</div>
+                <div style="font-size:11px;color:var(--ink3);">JPG, PNG, or WEBP</div>
+              </div>
+            </div>
+            <input type="file" id="ap-photo-file" style="display:none" accept="image/*" onchange="previewPersonPhoto(this)">
+          </div>
+        </div>
+      </div><!-- /core tab -->
+
+      <!-- FAMILY BUILDER TAB -->
+      <div id="ap-tab-family" style="display:none;">
+        <div style="font-size:13px;color:var(--ink3);margin-bottom:16px;line-height:1.6;">Add related people at the same time. Each card creates a new person and links them automatically. You can leave cards blank to skip.</div>
+
+        <!-- Father -->
+        <div class="family-builder-card" id="fb-father">
+          <div class="fb-card-header"><i class="ti ti-user" style="color:var(--sepia)"></i> Father <span class="tag" style="background:var(--parchment3);font-size:10px;">parent</span></div>
+          <div class="grid-2">
+            <div class="form-group"><label class="form-label">First Name</label><input class="form-input" id="fb-father-fn" placeholder="First name"></div>
+            <div class="form-group"><label class="form-label">Last Name</label><input class="form-input" id="fb-father-ln" placeholder="Last name"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Birth Year</label><input class="form-input" id="fb-father-by" placeholder="e.g. 1880"></div>
+            <div class="form-group"><label class="form-label">Birth Place</label><input class="form-input" id="fb-father-bp" placeholder="City, State"></div>
+          </div>
+          <div class="form-group"><label class="form-label">Existing person? (pick from list)</label>
+            <select class="form-select" id="fb-father-existing"><option value="">— Create new —</option></select>
+          </div>
+        </div>
+
+        <!-- Mother -->
+        <div class="family-builder-card" id="fb-mother">
+          <div class="fb-card-header"><i class="ti ti-user" style="color:var(--sepia)"></i> Mother <span class="tag" style="background:var(--parchment3);font-size:10px;">parent</span></div>
+          <div class="grid-2">
+            <div class="form-group"><label class="form-label">First Name</label><input class="form-input" id="fb-mother-fn" placeholder="First name"></div>
+            <div class="form-group"><label class="form-label">Last Name (maiden)</label><input class="form-input" id="fb-mother-ln" placeholder="Maiden name"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Birth Year</label><input class="form-input" id="fb-mother-by" placeholder="e.g. 1882"></div>
+            <div class="form-group"><label class="form-label">Birth Place</label><input class="form-input" id="fb-mother-bp" placeholder="City, State"></div>
+          </div>
+          <div class="form-group"><label class="form-label">Existing person?</label>
+            <select class="form-select" id="fb-mother-existing"><option value="">— Create new —</option></select>
+          </div>
+        </div>
+
+        <!-- Spouse -->
+        <div class="family-builder-card" id="fb-spouse">
+          <div class="fb-card-header"><i class="ti ti-rings" style="color:var(--sepia)"></i> Spouse / Partner <span class="tag" style="background:var(--parchment3);font-size:10px;">spouse</span></div>
+          <div class="grid-2">
+            <div class="form-group"><label class="form-label">First Name</label><input class="form-input" id="fb-spouse-fn" placeholder="First name"></div>
+            <div class="form-group"><label class="form-label">Last Name</label><input class="form-input" id="fb-spouse-ln" placeholder="Last name"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Marriage Date</label><input class="form-input" id="fb-spouse-md" placeholder="e.g. 12 Jun 1910"></div>
+            <div class="form-group"><label class="form-label">Marriage Place</label><input class="form-input" id="fb-spouse-mp" placeholder="City, State"></div>
+          </div>
+          <div class="form-group"><label class="form-label">Existing person?</label>
+            <select class="form-select" id="fb-spouse-existing"><option value="">— Create new —</option></select>
+          </div>
+        </div>
+
+        <!-- Siblings -->
+        <div class="family-builder-card">
+          <div class="fb-card-header"><i class="ti ti-users" style="color:var(--sepia)"></i> Siblings <span class="tag" style="background:var(--parchment3);font-size:10px;">sibling</span></div>
+          <div id="fb-siblings-list"></div>
+          <button class="btn btn-sm mt-8" onclick="addSiblingRow()"><i class="ti ti-plus"></i> Add Sibling</button>
+        </div>
+
+        <!-- Children -->
+        <div class="family-builder-card">
+          <div class="fb-card-header"><i class="ti ti-baby-carriage" style="color:var(--sepia)"></i> Children</div>
+          <div id="fb-children-list"></div>
+          <button class="btn btn-sm mt-8" onclick="addChildRow()"><i class="ti ti-plus"></i> Add Child</button>
+        </div>
+      </div><!-- /family tab -->
+
+      <!-- FAN TAB -->
+      <div id="ap-tab-fan" style="display:none;">
+        <div style="font-size:13px;color:var(--ink3);margin-bottom:16px;line-height:1.6;"><strong>FAN Club</strong> — Friends, Associates, and Neighbors. Tag people who appear alongside this person in records but aren't direct family. Useful for cluster genealogy.</div>
+        <div id="fan-entries-list"></div>
+        <button class="btn btn-sm" onclick="addFanRow()"><i class="ti ti-plus"></i> Add FAN Connection</button>
+      </div><!-- /fan tab -->
+
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('add-person-modal')">Cancel</button>
@@ -1981,6 +2132,51 @@
   </div>
 </div>
 
+<!-- VIEW DOCUMENT MODAL -->
+<div class="modal-backdrop" id="view-doc-modal">
+  <div class="modal" style="max-width:700px;max-height:90vh;">
+    <div class="modal-header">
+      <i class="ti ti-file-text" style="font-size:20px;color:var(--gold)"></i>
+      <div class="modal-title" id="vdm-title">Document</div>
+      <div style="margin-left:auto;display:flex;gap:8px;">
+        <button class="btn btn-sm btn-danger" id="vdm-delete-btn"><i class="ti ti-trash"></i> Delete</button>
+        <button class="modal-close" onclick="closeModal('view-doc-modal')"><i class="ti ti-x"></i></button>
+      </div>
+    </div>
+    <div class="modal-body" id="vdm-body"></div>
+  </div>
+</div>
+
+<!-- VIEW PHOTO MODAL -->
+<div class="modal-backdrop" id="view-photo-modal">
+  <div class="modal" style="max-width:720px;max-height:92vh;">
+    <div class="modal-header">
+      <i class="ti ti-photo" style="font-size:20px;color:var(--gold)"></i>
+      <div class="modal-title" id="vpm-title">Photo</div>
+      <div style="margin-left:auto;display:flex;gap:8px;">
+        <button class="btn btn-sm btn-danger" id="vpm-delete-btn"><i class="ti ti-trash"></i> Delete</button>
+        <button class="modal-close" onclick="closeModal('view-photo-modal')"><i class="ti ti-x"></i></button>
+      </div>
+    </div>
+    <div class="modal-body" id="vpm-body" style="padding:0;"></div>
+  </div>
+</div>
+
+<!-- VIEW COMM MODAL -->
+<div class="modal-backdrop" id="view-comm-modal">
+  <div class="modal" style="max-width:640px;max-height:90vh;">
+    <div class="modal-header">
+      <i class="ti ti-mail" style="font-size:20px;color:var(--gold)"></i>
+      <div class="modal-title" id="vcm-title">Communication</div>
+      <div style="margin-left:auto;display:flex;gap:8px;">
+        <button class="btn btn-sm btn-danger" id="vcm-delete-btn"><i class="ti ti-trash"></i> Delete</button>
+        <button class="modal-close" onclick="closeModal('view-comm-modal')"><i class="ti ti-x"></i></button>
+      </div>
+    </div>
+    <div class="modal-body" id="vcm-body"></div>
+  </div>
+</div>
+
 <!-- ADD FAMILY LINE MODAL -->
 <div class="modal-backdrop" id="add-family-line-modal">
   <div class="modal" style="max-width:420px;">
@@ -2118,6 +2314,8 @@ let DB = {
   documents: [],
   photos: [],
   communications: [],
+  fans: [],          // Friends, Associates, Neighbors connections
+  factConfidence: {}, // { personId: { fieldKey: { level, docId, note } } }
   sources: [],
   tasks: [],
   relationships: [],
@@ -2158,8 +2356,9 @@ function load() {
       const parsed = JSON.parse(raw);
       DB = Object.assign(DB, parsed);
       // ensure arrays exist
-      ['people','events','documents','photos','communications','sources','tasks','relationships','familyLines']
+      ['people','events','documents','photos','communications','sources','tasks','relationships','familyLines','fans']
         .forEach(k => { if (!Array.isArray(DB[k])) DB[k] = []; });
+      if (!DB.factConfidence || typeof DB.factConfidence !== 'object') DB.factConfidence = {};
       DB.settings = Object.assign(DB.settings, parsed.settings || {});
       // find max id
       const allIds = [...DB.people, ...DB.events, ...DB.documents, ...DB.photos,
@@ -2223,6 +2422,10 @@ function populateModalSelects(modalId) {
       sel.appendChild(opt);
     });
   });
+  if (modalId === 'add-person-modal') {
+    populateProofDocSelects();
+    populateFamilyBuilderSelects();
+  }
 }
 
 // ── PEOPLE ──────────────────────────────────────────────────────
@@ -2243,41 +2446,52 @@ function personAge(p) {
 function savePerson() {
   const p = {
     id: genId(),
-    firstName: document.getElementById('ap-firstname').value.trim(),
-    lastName: document.getElementById('ap-lastname').value.trim(),
+    firstName:  document.getElementById('ap-firstname').value.trim(),
+    lastName:   document.getElementById('ap-lastname').value.trim(),
     middleName: document.getElementById('ap-middlename').value.trim(),
-    gender: document.getElementById('ap-gender').value,
-    status: document.getElementById('ap-status').value,
-    birthDate: document.getElementById('ap-birthdate').value.trim(),
+    gender:     document.getElementById('ap-gender').value,
+    status:     document.getElementById('ap-status').value,
+    birthDate:  document.getElementById('ap-birthdate').value.trim(),
     birthPlace: document.getElementById('ap-birthplace').value.trim(),
-    deathDate: document.getElementById('ap-deathdate').value.trim(),
+    deathDate:  document.getElementById('ap-deathdate').value.trim(),
     deathPlace: document.getElementById('ap-deathplace').value.trim(),
     occupation: document.getElementById('ap-occupation').value.trim(),
-    religion: document.getElementById('ap-religion').value.trim(),
-    aka: document.getElementById('ap-aka').value.trim(),
-    education: document.getElementById('ap-education').value.trim(),
-    bio: document.getElementById('ap-bio').value.trim(),
-    dna: document.getElementById('ap-dna').value.trim(),
+    religion:   document.getElementById('ap-religion').value.trim(),
+    aka:        document.getElementById('ap-aka').value.trim(),
+    education:  document.getElementById('ap-education').value.trim(),
+    bio:        document.getElementById('ap-bio').value.trim(),
+    dna:        document.getElementById('ap-dna').value.trim(),
     familyLine: document.getElementById('ap-family-line').value.trim(),
-    tags: document.getElementById('ap-tags').value.split(',').map(t=>t.trim()).filter(Boolean),
-    photo: null,
-    addedAt: new Date().toISOString()
+    tags:       document.getElementById('ap-tags').value.split(',').map(t=>t.trim()).filter(Boolean),
+    photo:      null,
+    addedAt:    new Date().toISOString()
   };
   if (!p.firstName && !p.lastName) { alert('Please enter at least a first or last name.'); return; }
 
-  // check for photo
   const previewImg = document.querySelector('#ap-photo-preview img');
   if (previewImg) p.photo = previewImg.src;
 
   DB.people.push(p);
 
-  // auto-create birth event
-  if (p.birthDate) {
-    DB.events.push({ id: genId(), personId: p.id, type: 'birth', date: p.birthDate, place: p.birthPlace, confidence: 'certain', desc: '', source: '' });
-  }
-  if (p.deathDate) {
-    DB.events.push({ id: genId(), personId: p.id, type: 'death', date: p.deathDate, place: p.deathPlace, confidence: 'certain', desc: '', source: '' });
-  }
+  // Save fact confidence
+  const birthConf = document.getElementById('ap-birth-conf').value;
+  const birthDoc  = document.getElementById('ap-birth-doc').value;
+  const deathConf = document.getElementById('ap-death-conf').value;
+  const deathDoc  = document.getElementById('ap-death-doc').value;
+  if (!DB.factConfidence[p.id]) DB.factConfidence[p.id] = {};
+  if (birthConf) DB.factConfidence[p.id].birth = { level: birthConf, docId: birthDoc };
+  if (deathConf) DB.factConfidence[p.id].death = { level: deathConf, docId: deathDoc };
+
+  // Auto-create birth/death events
+  const birthConfl = birthConf || 'certain';
+  if (p.birthDate) DB.events.push({ id: genId(), personId: p.id, type: 'birth', date: p.birthDate, place: p.birthPlace, confidence: birthConfl, desc: '', source: birthDoc || '' });
+  if (p.deathDate) DB.events.push({ id: genId(), personId: p.id, type: 'death', date: p.deathDate, place: p.deathPlace, confidence: deathConf || 'certain', desc: '', source: deathDoc || '' });
+
+  // ── FAMILY BUILDER ──
+  const savedRelatives = saveFamilyBuilder(p.id);
+
+  // ── FAN ──
+  saveFanEntries(p.id);
 
   save();
   closeModal('add-person-modal');
@@ -2286,6 +2500,11 @@ function savePerson() {
   updateRecent(p.id, 'person', fullName(p));
   updateTreeRootSelect();
   renderDashRecent();
+
+  if (savedRelatives > 0) {
+    // brief summary
+    console.log(`Created ${savedRelatives} related people.`);
+  }
 }
 
 function clearPersonForm() {
@@ -2297,8 +2516,251 @@ function clearPersonForm() {
   });
   document.getElementById('ap-gender').value = '';
   document.getElementById('ap-status').value = 'unknown';
+  const el = document.getElementById('ap-birth-conf'); if (el) el.value = '';
+  const el2 = document.getElementById('ap-death-conf'); if (el2) el2.value = '';
+  const el3 = document.getElementById('ap-birth-doc'); if (el3) el3.value = '';
+  const el4 = document.getElementById('ap-death-doc'); if (el4) el4.value = '';
   const preview = document.getElementById('ap-photo-preview');
-  preview.innerHTML = '<i class="ti ti-user" style="font-size:24px;color:var(--ink3)"></i>';
+  if (preview) preview.innerHTML = '<i class="ti ti-user" style="font-size:24px;color:var(--ink3)"></i>';
+  // clear family builder
+  ['fb-father-fn','fb-father-ln','fb-father-by','fb-father-bp',
+   'fb-mother-fn','fb-mother-ln','fb-mother-by','fb-mother-bp',
+   'fb-spouse-fn','fb-spouse-ln','fb-spouse-md','fb-spouse-mp'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  ['fb-father-existing','fb-mother-existing','fb-spouse-existing'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const sib = document.getElementById('fb-siblings-list'); if (sib) sib.innerHTML = '';
+  const chi = document.getElementById('fb-children-list'); if (chi) chi.innerHTML = '';
+  const fan = document.getElementById('fan-entries-list'); if (fan) fan.innerHTML = '';
+  switchApTab('core');
+}
+
+// ── ADD-PERSON MODAL TAB SWITCHING ───────────────────────────────
+function switchApTab(tab) {
+  document.querySelectorAll('.ap-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.tab === tab);
+  });
+  ['core','family','fan'].forEach(t => {
+    const el = document.getElementById('ap-tab-' + t);
+    if (el) el.style.display = t === tab ? '' : 'none';
+  });
+  // When switching to family tab, populate existing-person dropdowns
+  if (tab === 'family') populateFamilyBuilderSelects();
+  // When switching to core, refresh proof doc dropdowns
+  if (tab === 'core') populateProofDocSelects();
+}
+
+function populateProofDocSelects() {
+  ['ap-birth-doc','ap-death-doc'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Proof document…</option>';
+    DB.documents.sort((a,b)=>(a.title||'').localeCompare(b.title||'')).forEach(d => {
+      const o = document.createElement('option');
+      o.value = d.id;
+      o.textContent = (d.title || 'Untitled') + (d.date ? ` (${d.date})` : '');
+      if (d.id === cur) o.selected = true;
+      sel.appendChild(o);
+    });
+  });
+}
+
+function populateFamilyBuilderSelects() {
+  const sorted = [...DB.people].sort((a,b)=>fullName(a).localeCompare(fullName(b)));
+  ['fb-father-existing','fb-mother-existing','fb-spouse-existing'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    sel.innerHTML = '<option value="">— Create new —</option>';
+    sorted.forEach(p => {
+      const o = document.createElement('option');
+      o.value = p.id;
+      o.textContent = fullName(p) + (p.birthDate ? ` (b. ${p.birthDate.split(' ').pop()})` : '');
+      sel.appendChild(o);
+    });
+  });
+}
+
+// ── SIBLING / CHILD ROWS ─────────────────────────────────────────
+let siblingRowCount = 0;
+let childRowCount   = 0;
+
+function addSiblingRow() {
+  const id = 'sib_' + (++siblingRowCount);
+  const div = document.createElement('div');
+  div.className = 'fb-sibling-row';
+  div.id = id;
+  div.innerHTML = `
+    <div class="form-group" style="margin-bottom:0;"><label class="form-label">First Name</label><input class="form-input" id="${id}-fn" placeholder="First name"></div>
+    <div class="form-group" style="margin-bottom:0;"><label class="form-label">Last Name</label><input class="form-input" id="${id}-ln" placeholder="Last name"></div>
+    <div class="form-group" style="margin-bottom:0;"><label class="form-label">Birth Year</label><input class="form-input" id="${id}-by" placeholder="Year"></div>
+    <button class="btn btn-sm btn-danger" style="margin-bottom:0;height:36px;align-self:end;" onclick="this.parentElement.remove()"><i class="ti ti-x"></i></button>`;
+  document.getElementById('fb-siblings-list').appendChild(div);
+}
+
+function addChildRow() {
+  const id = 'chi_' + (++childRowCount);
+  const div = document.createElement('div');
+  div.className = 'fb-child-row';
+  div.id = id;
+  div.innerHTML = `
+    <div class="form-group" style="margin-bottom:0;"><label class="form-label">First Name</label><input class="form-input" id="${id}-fn" placeholder="First name"></div>
+    <div class="form-group" style="margin-bottom:0;"><label class="form-label">Last Name</label><input class="form-input" id="${id}-ln" placeholder="Last name"></div>
+    <div class="form-group" style="margin-bottom:0;"><label class="form-label">Birth Year</label><input class="form-input" id="${id}-by" placeholder="Year"></div>
+    <button class="btn btn-sm btn-danger" style="margin-bottom:0;height:36px;align-self:end;" onclick="this.parentElement.remove()"><i class="ti ti-x"></i></button>`;
+  document.getElementById('fb-children-list').appendChild(div);
+}
+
+// ── FAN ROWS ─────────────────────────────────────────────────────
+const FAN_TYPES = ['Friend','Neighbor','Associate','Witness','Employer','Employee','Godparent','Godchild','Bondsman','Physician','Attorney','Clergy','Landlord','Tenant','Business Partner','Other'];
+let fanRowCount = 0;
+
+function addFanRow() {
+  const id = 'fan_' + (++fanRowCount);
+  const sorted = [...DB.people].sort((a,b)=>fullName(a).localeCompare(fullName(b)));
+  const div = document.createElement('div');
+  div.className = 'fan-row';
+  div.id = id;
+  div.innerHTML = `
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">Name / Person</label>
+      <select class="form-select" id="${id}-pid">
+        <option value="">— Type name below if new —</option>
+        ${sorted.map(p=>`<option value="${p.id}">${fullName(p)}</option>`).join('')}
+      </select>
+      <input class="form-input" id="${id}-name" placeholder="Or type name (new person)" style="margin-top:4px;font-size:12px;" oninput="document.getElementById('${id}-pid').value=''">
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">Relationship Type</label>
+      <select class="form-select" id="${id}-type">
+        ${FAN_TYPES.map(t=>`<option>${t}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">Context / Notes</label>
+      <input class="form-input" id="${id}-note" placeholder="e.g. Witness on 1880 deed, co-worker…">
+    </div>
+    <button class="btn btn-sm btn-danger" style="margin-bottom:0;height:36px;align-self:end;" onclick="this.parentElement.remove()"><i class="ti ti-x"></i></button>`;
+  document.getElementById('fan-entries-list').appendChild(div);
+}
+
+// ── FAMILY BUILDER SAVE ──────────────────────────────────────────
+function saveFamilyBuilder(mainPersonId) {
+  let count = 0;
+
+  function createOrUseExisting(existingId, fn, ln, by, bp, gender) {
+    if (existingId) return existingId;
+    fn = fn.trim(); ln = ln.trim();
+    if (!fn && !ln) return null;
+    const np = { id: genId(), firstName: fn, lastName: ln, gender, status: 'unknown',
+      birthDate: by ? `abt ${by}` : '', birthPlace: bp.trim(), deathDate: '', deathPlace: '',
+      occupation: '', religion: '', aka: '', education: '', bio: '', dna: '',
+      familyLine: '', tags: [], photo: null, addedAt: new Date().toISOString() };
+    DB.people.push(np);
+    if (np.birthDate) DB.events.push({ id: genId(), personId: np.id, type: 'birth', date: np.birthDate, place: np.birthPlace, confidence: 'estimated', desc: '', source: '' });
+    count++;
+    return np.id;
+  }
+
+  function link(p1Id, p2Id, type, extra = {}) {
+    if (!p1Id || !p2Id || p1Id === p2Id) return;
+    // Avoid duplicates
+    const exists = DB.relationships.find(r =>
+      ((r.person1Id===p1Id && r.person2Id===p2Id) || (r.person1Id===p2Id && r.person2Id===p1Id)) && r.type === type);
+    if (!exists) DB.relationships.push({ id: genId(), person1Id: p1Id, person2Id: p2Id, type, ...extra });
+  }
+
+  // Father
+  const fatherId = createOrUseExisting(
+    document.getElementById('fb-father-existing').value,
+    document.getElementById('fb-father-fn').value,
+    document.getElementById('fb-father-ln').value,
+    document.getElementById('fb-father-by').value,
+    document.getElementById('fb-father-bp').value, 'M');
+  if (fatherId) link(fatherId, mainPersonId, 'parent');
+
+  // Mother
+  const motherId = createOrUseExisting(
+    document.getElementById('fb-mother-existing').value,
+    document.getElementById('fb-mother-fn').value,
+    document.getElementById('fb-mother-ln').value,
+    document.getElementById('fb-mother-by').value,
+    document.getElementById('fb-mother-bp').value, 'F');
+  if (motherId) link(motherId, mainPersonId, 'parent');
+
+  // Parents married to each other
+  if (fatherId && motherId) link(fatherId, motherId, 'spouse');
+
+  // Spouse
+  const spouseId = createOrUseExisting(
+    document.getElementById('fb-spouse-existing').value,
+    document.getElementById('fb-spouse-fn').value,
+    document.getElementById('fb-spouse-ln').value,
+    '', '', '');
+  if (spouseId) {
+    link(mainPersonId, spouseId, 'spouse', {
+      marriageDate:  document.getElementById('fb-spouse-md').value.trim(),
+      marriagePlace: document.getElementById('fb-spouse-mp').value.trim()
+    });
+  }
+
+  // Siblings
+  document.querySelectorAll('#fb-siblings-list [id^="sib_"]').forEach(row => {
+    const baseId = row.id;
+    const sibId = createOrUseExisting('',
+      document.getElementById(baseId+'-fn')?.value || '',
+      document.getElementById(baseId+'-ln')?.value || '',
+      document.getElementById(baseId+'-by')?.value || '',
+      '', '');
+    if (sibId) {
+      link(mainPersonId, sibId, 'sibling');
+      if (fatherId) link(fatherId, sibId, 'parent');
+      if (motherId) link(motherId, sibId, 'parent');
+    }
+  });
+
+  // Children
+  document.querySelectorAll('#fb-children-list [id^="chi_"]').forEach(row => {
+    const baseId = row.id;
+    const childId = createOrUseExisting('',
+      document.getElementById(baseId+'-fn')?.value || '',
+      document.getElementById(baseId+'-ln')?.value || '',
+      document.getElementById(baseId+'-by')?.value || '',
+      '', '');
+    if (childId) link(mainPersonId, childId, 'parent');
+  });
+
+  return count;
+}
+
+// ── FAN SAVE ─────────────────────────────────────────────────────
+function saveFanEntries(mainPersonId) {
+  if (!DB.fans) DB.fans = [];
+  document.querySelectorAll('#fan-entries-list [id^="fan_"]').forEach(row => {
+    const baseId = row.id;
+    const pid  = document.getElementById(baseId+'-pid')?.value || '';
+    const name = document.getElementById(baseId+'-name')?.value.trim() || '';
+    const type = document.getElementById(baseId+'-type')?.value || 'Associate';
+    const note = document.getElementById(baseId+'-note')?.value.trim() || '';
+    if (!pid && !name) return;
+
+    // If a new name was typed, quick-create the person
+    let linkedId = pid;
+    if (!pid && name) {
+      const parts = name.split(/\s+/);
+      const np = { id: genId(), firstName: parts[0]||'', lastName: parts.slice(1).join(' ')||'',
+        middleName:'', gender:'', status:'unknown', birthDate:'', birthPlace:'',
+        deathDate:'', deathPlace:'', occupation:'', religion:'', aka:'',
+        education:'', bio:'', dna:'', familyLine:'', tags:['FAN'], photo:null,
+        addedAt: new Date().toISOString() };
+      DB.people.push(np);
+      linkedId = np.id;
+    }
+
+    DB.fans.push({ id: genId(), person1Id: mainPersonId, person2Id: linkedId, fanType: type, note, addedAt: new Date().toISOString() });
+  });
 }
 
 function previewPersonPhoto(input) {
@@ -2405,35 +2867,50 @@ function openPersonDetail(id) {
   const p = DB.people.find(x => x.id === id);
   if (!p) return;
 
-  const personEvents = DB.events.filter(e => e.personId === id).sort((a,b) => {
+  const personEvents  = DB.events.filter(e => e.personId === id).sort((a,b) => {
     const ay = parseInt((a.date||'').split(' ').pop()) || 0;
-    const by2 = parseInt((b.date||'').split(' ').pop()) || 0;
+    const by2= parseInt((b.date||'').split(' ').pop()) || 0;
     return ay - by2;
   });
-
-  const personDocs = DB.documents.filter(d => (d.peopleIds||[]).includes(id));
+  const personDocs   = DB.documents.filter(d => (d.peopleIds||[]).includes(id));
   const personPhotos = DB.photos.filter(ph => (ph.peopleIds||[]).includes(id));
-  const personComms = DB.communications.filter(c => (c.peopleIds||[]).includes(id));
-  const personRels = DB.relationships.filter(r => r.person1Id === id || r.person2Id === id);
+  const personComms  = DB.communications.filter(c => (c.peopleIds||[]).includes(id));
+  const personRels   = DB.relationships.filter(r => r.person1Id===id || r.person2Id===id);
+  const personFans   = (DB.fans||[]).filter(f => f.person1Id===id || f.person2Id===id);
+  const fc           = DB.factConfidence?.[id] || {};
 
   document.getElementById('pfm-name').textContent = fullName(p);
   const body = document.getElementById('pfm-body');
+  const age  = personAge(p);
+  const genderLabel = {M:'Male',F:'Female',X:'Non-binary'}[p.gender] || 'Unknown';
 
-  const age = personAge(p);
-  const genderLabel = { M: 'Male', F: 'Female', X: 'Non-binary' }[p.gender] || 'Unknown';
+  function confBadge(key) {
+    const c = fc[key];
+    if (!c || !c.level) return '';
+    const labels = { certain:'✅ Certain', probable:'🟡 Probable', possible:'🟠 Possible', estimated:'⬜ Estimated' };
+    const cls    = { certain:'conf-certain', probable:'conf-probable', possible:'conf-possible', estimated:'conf-estimated' };
+    let html = `<span class="${cls[c.level]||''}">${labels[c.level]||c.level}</span>`;
+    if (c.docId) {
+      const doc = DB.documents.find(d => d.id === c.docId);
+      if (doc) html += ` <span style="font-size:11px;color:var(--sepia);cursor:pointer;" onclick="viewDoc('${doc.id}')"><i class="ti ti-paperclip"></i> ${doc.title}</span>`;
+    }
+    return `<div style="margin-top:3px;">${html}</div>`;
+  }
 
   body.innerHTML = `
     <div style="display:flex;gap:20px;align-items:flex-start;margin-bottom:20px;">
       <div style="width:90px;height:90px;border-radius:50%;background:var(--parchment3);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:32px;font-family:var(--font-serif);overflow:hidden;flex-shrink:0;">
         ${p.photo ? `<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;">` : initials(p)}
       </div>
-      <div>
+      <div style="flex:1;">
         <div style="font-family:var(--font-serif);font-size:24px;color:var(--ink);">${fullName(p)}</div>
         ${p.aka ? `<div style="font-style:italic;color:var(--ink3);font-size:13px;margin-top:2px;">Also known as: "${p.aka}"</div>` : ''}
-        <div style="font-family:var(--font-mono);font-size:12px;color:var(--ink3);margin-top:4px;">${[p.birthDate && `b. ${p.birthDate}`, p.birthPlace, p.deathDate && `d. ${p.deathDate}`, p.deathPlace].filter(Boolean).join(' · ')}</div>
-        ${age ? `<div style="font-size:12px;color:var(--ink3);margin-top:2px;">${p.status === 'deceased' ? `Lived to age ~${age}` : `Age ~${age}`}</div>` : ''}
+        <div style="font-family:var(--font-mono);font-size:12px;color:var(--ink3);margin-top:4px;">
+          ${[p.birthDate&&`b. ${p.birthDate}`, p.birthPlace, p.deathDate&&`d. ${p.deathDate}`, p.deathPlace].filter(Boolean).join(' · ')}
+        </div>
+        ${age ? `<div style="font-size:12px;color:var(--ink3);margin-top:2px;">${p.status==='deceased'?`Lived to age ~${age}`:`Age ~${age}`}</div>` : ''}
         <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
-          ${(p.tags||[]).map(t => `<span class="tag tag-document">${t}</span>`).join('')}
+          ${(p.tags||[]).map(t=>`<span class="tag tag-document">${t}</span>`).join('')}
         </div>
       </div>
     </div>
@@ -2443,53 +2920,95 @@ function openPersonDetail(id) {
         <div class="detail-section-title">Vital Details</div>
         ${detailRow('Gender', genderLabel)}
         ${detailRow('Status', {living:'Living',deceased:'Deceased',unknown:'Unknown'}[p.status]||'Unknown')}
+        <div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--border);">
+          <span style="color:var(--ink3);font-size:11px;letter-spacing:.05em;text-transform:uppercase;">Birth</span>
+          <div style="color:var(--ink);">${[p.birthDate, p.birthPlace].filter(Boolean).join(' · ') || '—'}</div>
+          ${confBadge('birth')}
+        </div>
+        ${(p.deathDate || fc.death) ? `<div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--border);">
+          <span style="color:var(--ink3);font-size:11px;letter-spacing:.05em;text-transform:uppercase;">Death</span>
+          <div style="color:var(--ink);">${[p.deathDate, p.deathPlace].filter(Boolean).join(' · ') || '—'}</div>
+          ${confBadge('death')}
+        </div>` : ''}
         ${p.occupation ? detailRow('Occupation', p.occupation) : ''}
-        ${p.religion ? detailRow('Religion', p.religion) : ''}
-        ${p.education ? detailRow('Education', p.education) : ''}
-        ${p.familyLine ? detailRow('Family Line', p.familyLine) : ''}
-        ${p.dna ? detailRow('DNA Kit', p.dna) : ''}
+        ${p.religion   ? detailRow('Religion',   p.religion)   : ''}
+        ${p.education  ? detailRow('Education',  p.education)  : ''}
+        ${p.familyLine ? detailRow('Family Line',p.familyLine) : ''}
+        ${p.dna        ? detailRow('DNA Kit',    p.dna)        : ''}
       </div>
       <div>
         <div class="detail-section-title">Relationships (${personRels.length})</div>
         ${personRels.length ? personRels.map(r => {
-          const otherId = r.person1Id === id ? r.person2Id : r.person1Id;
-          const other = DB.people.find(x => x.id === otherId);
-          const label = relTypeLabel(r.type, r.person1Id === id);
-          return `<div style="font-size:13px;margin-bottom:6px;display:flex;justify-content:space-between;">
-            <span class="rel-badge rel-${r.type === 'spouse' ? 'spouse' : r.type === 'parent' ? (r.person1Id === id ? 'parent' : 'child') : 'other'}">${label}</span>
-            <span style="cursor:pointer;color:var(--rust);" onclick="openPersonDetail('${otherId}')">${other ? fullName(other) : 'Unknown'}</span>
+          const otherId = r.person1Id===id ? r.person2Id : r.person1Id;
+          const other   = DB.people.find(x=>x.id===otherId);
+          const label   = relTypeLabel(r.type, r.person1Id===id);
+          return `<div style="font-size:13px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
+            <span class="rel-badge rel-${r.type==='spouse'?'spouse':r.type==='parent'?(r.person1Id===id?'parent':'child'):'other'}">${label}</span>
+            <span style="cursor:pointer;color:var(--rust);" onclick="closeModal('person-full-modal');setTimeout(()=>openPersonDetail('${otherId}'),100)">
+              ${other ? fullName(other) : 'Unknown'}
+            </span>
           </div>`;
         }).join('') : '<div style="font-size:13px;color:var(--ink3);">No relationships added</div>'}
         <button class="btn btn-sm mt-8" onclick="openRelModal('${id}')"><i class="ti ti-link"></i> Add Relationship</button>
       </div>
     </div>
 
-    ${p.bio ? `<div style="margin-top:16px;"><div class="detail-section-title">Biography</div><div style="font-size:13px;color:var(--ink2);line-height:1.7;background:var(--parchment2);padding:12px;border-radius:var(--radius);border:1px solid var(--border);">${p.bio}</div></div>` : ''}
+    ${p.bio ? `<div style="margin-top:16px;"><div class="detail-section-title">Biography</div>
+      <div style="font-size:13px;color:var(--ink2);line-height:1.7;background:var(--parchment2);padding:12px;border-radius:var(--radius);border:1px solid var(--border);">${p.bio}</div>
+    </div>` : ''}
 
     <div style="margin-top:20px;">
       <div class="detail-section-title">Life Events (${personEvents.length})</div>
-      ${personEvents.length ? `<div class="timeline">${personEvents.map(ev => timelineItemHtml(ev, p)).join('')}</div>` : '<div style="font-size:13px;color:var(--ink3);">No events recorded</div>'}
+      ${personEvents.length
+        ? `<div class="timeline">${personEvents.map(ev=>timelineItemHtml(ev,p)).join('')}</div>`
+        : '<div style="font-size:13px;color:var(--ink3);">No events recorded</div>'}
     </div>
 
     <div class="grid-2" style="margin-top:16px;gap:16px;">
       <div>
         <div class="detail-section-title">Documents (${personDocs.length})</div>
-        ${personDocs.length ? personDocs.map(d => `<div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
-          <i class="ti ${docTypeIcon(d.docType)}" style="color:var(--sepia)"></i>
-          <span>${d.title}</span><span style="font-size:11px;color:var(--ink3);margin-left:auto;">${d.date||''}</span>
-        </div>`).join('') : '<div style="font-size:13px;color:var(--ink3);">No documents</div>'}
+        ${personDocs.length ? personDocs.map(d=>`
+          <div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;cursor:pointer;" onclick="viewDoc('${d.id}')">
+            <i class="ti ${docTypeIcon(d.docType)}" style="color:var(--sepia)"></i>
+            <span>${d.title}</span>
+            <span style="font-size:11px;color:var(--ink3);margin-left:auto;">${d.date||''}</span>
+            <i class="ti ti-external-link" style="font-size:11px;color:var(--ink3);"></i>
+          </div>`).join('')
+        : '<div style="font-size:13px;color:var(--ink3);">No documents</div>'}
       </div>
       <div>
         <div class="detail-section-title">Photos (${personPhotos.length})</div>
-        ${personPhotos.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;">${personPhotos.slice(0,6).map(ph => `<div style="width:70px;height:70px;border-radius:var(--radius);overflow:hidden;background:var(--parchment2);border:1px solid var(--border);">${ph.dataUrl ? `<img src="${ph.dataUrl}" style="width:100%;height:100%;object-fit:cover;">` : '<div style="height:100%;display:flex;align-items:center;justify-content:center;"><i class="ti ti-photo" style="font-size:20px;color:var(--sepia)"></i></div>'}</div>`).join('')}</div>` : '<div style="font-size:13px;color:var(--ink3);">No photos</div>'}
+        ${personPhotos.length
+          ? `<div style="display:flex;gap:8px;flex-wrap:wrap;">${personPhotos.slice(0,6).map(ph=>`
+              <div style="width:70px;height:70px;border-radius:var(--radius);overflow:hidden;background:var(--parchment2);border:1px solid var(--border);cursor:pointer;" onclick="viewPhoto('${ph.id}')">
+                ${ph.dataUrl ? `<img src="${ph.dataUrl}" style="width:100%;height:100%;object-fit:cover;">`
+                             : '<div style="height:100%;display:flex;align-items:center;justify-content:center;"><i class="ti ti-photo" style="font-size:20px;color:var(--sepia)"></i></div>'}
+              </div>`).join('')}</div>`
+          : '<div style="font-size:13px;color:var(--ink3);">No photos</div>'}
       </div>
     </div>
 
     ${personComms.length ? `<div style="margin-top:16px;">
       <div class="detail-section-title">Correspondence (${personComms.length})</div>
-      ${personComms.slice(0,3).map(c => `<div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--border);">
-        <span style="color:var(--ink3);font-size:11px;">${c.date}</span> — ${c.subject||c.type}
-      </div>`).join('')}
+      ${personComms.slice(0,3).map(c=>`
+        <div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="viewComm('${c.id}')">
+          <span style="color:var(--ink3);font-size:11px;">${c.date||''}</span> — ${c.subject||c.type}
+        </div>`).join('')}
+    </div>` : ''}
+
+    ${personFans.length ? `<div style="margin-top:20px;">
+      <div class="detail-section-title">FAN Club — Friends, Associates &amp; Neighbors (${personFans.length})</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
+        ${personFans.map(f => {
+          const otherId = f.person1Id===id ? f.person2Id : f.person1Id;
+          const other   = DB.people.find(x=>x.id===otherId);
+          return `<span class="fan-badge" onclick="closeModal('person-full-modal');setTimeout(()=>openPersonDetail('${otherId}'),100)">
+            <i class="ti ti-user" style="font-size:10px;"></i> ${other ? fullName(other) : '—'}
+            <span style="color:var(--ink3);font-size:10px;font-weight:400;">${f.fanType||'Associate'}</span>
+            ${f.note ? `<span style="font-size:10px;color:var(--ink3);">· ${f.note}</span>` : ''}
+          </span>`;
+        }).join('')}
+      </div>
     </div>` : ''}
   `;
 
@@ -2557,9 +3076,18 @@ function editPerson(id) {
     preview.innerHTML = '<i class="ti ti-user" style="font-size:24px;color:var(--ink3)"></i>';
   }
 
+  // Populate confidence fields
+  const fc = DB.factConfidence?.[id] || {};
+  const bcEl = document.getElementById('ap-birth-conf'); if (bcEl) bcEl.value = fc.birth?.level || '';
+  const bdEl = document.getElementById('ap-birth-doc');  if (bdEl) bdEl.value = fc.birth?.docId || '';
+  const dcEl = document.getElementById('ap-death-conf'); if (dcEl) dcEl.value = fc.death?.level || '';
+  const ddEl = document.getElementById('ap-death-doc');  if (ddEl) ddEl.value = fc.death?.docId || '';
+  populateProofDocSelects();
+
   // Change modal title and save button to "edit" mode
   const modal = document.getElementById('add-person-modal');
   modal.querySelector('.modal-title').textContent = 'Edit Person';
+  document.getElementById('ap-modal-title').textContent = 'Edit Person';
   const saveBtn = document.getElementById('ap-save-btn');
   saveBtn.innerHTML = '<i class="ti ti-check"></i> Save Changes';
   saveBtn.onclick = () => updatePerson(id);
@@ -2615,10 +3143,17 @@ function updatePerson(id) {
     if (de) de.place = p.deathPlace;
   }
 
-  save();
+  // Save fact confidence
+  const birthConf = document.getElementById('ap-birth-conf')?.value;
+  const birthDoc  = document.getElementById('ap-birth-doc')?.value;
+  const deathConf = document.getElementById('ap-death-conf')?.value;
+  const deathDoc  = document.getElementById('ap-death-doc')?.value;
+  if (!DB.factConfidence[id]) DB.factConfidence[id] = {};
+  if (birthConf) DB.factConfidence[id].birth = { level: birthConf, docId: birthDoc };
+  if (deathConf) DB.factConfidence[id].death = { level: deathConf, docId: deathDoc };
 
-  // Reset modal back to "add" mode
-  document.getElementById('add-person-modal').querySelector('.modal-title').textContent = 'Add New Person';
+  save();
+  document.getElementById('ap-modal-title').textContent = 'Add New Person';
   const saveBtn = document.getElementById('ap-save-btn');
   saveBtn.innerHTML = '<i class="ti ti-check"></i> Save Person';
   saveBtn.onclick = savePerson;
@@ -2766,19 +3301,7 @@ const DOC_FORMS = {
     { id: 'df-witness1', label: 'Witness 1', type: 'text' },
     { id: 'df-witness2', label: 'Witness 2', type: 'text' },
   ],
-  census: [
-    { id: 'df-year', label: 'Census year', type: 'text' },
-    { id: 'df-state', label: 'State', type: 'text' },
-    { id: 'df-county', label: 'County', type: 'text' },
-    { id: 'df-township', label: 'Township / District', type: 'text' },
-    { id: 'df-address', label: 'Street address or farm', type: 'text' },
-    { id: 'df-household', label: 'Head of household', type: 'text' },
-    { id: 'df-members', label: 'Household members (name, age, relationship)', type: 'textarea' },
-    { id: 'df-dwelling-no', label: 'Dwelling number', type: 'text' },
-    { id: 'df-family-no', label: 'Family number', type: 'text' },
-    { id: 'df-enum-dist', label: 'Enumeration district', type: 'text' },
-    { id: 'df-sheet', label: 'Sheet / page number', type: 'text' },
-  ],
+  census: 'DYNAMIC', // handled by renderCensusForm()
   military: [
     { id: 'df-person', label: 'Soldier\'s full name', type: 'text' },
     { id: 'df-rank', label: 'Rank', type: 'text' },
@@ -2825,20 +3348,191 @@ function docTypeIcon(type) {
   return m[type] || 'ti-file';
 }
 
+// ── CENSUS YEAR COLUMN DEFINITIONS ──────────────────────────────
+const CENSUS_SCHEMAS = {
+  1790: { label: '1790 US Census', cols: ['Name','Free White Males 16+','Free White Males under 16','Free White Females','Other Free Persons','Slaves'] },
+  1800: { label: '1800 US Census', cols: ['Name','Age/Gender Group','Free White M <10','Free White M 10-15','Free White M 16-25','Free White M 26-44','Free White M 45+','Free White F (same groups)','Other Free','Slaves'] },
+  1810: { label: '1810 US Census', cols: ['Name','Age/Gender Group','Free White M','Free White F','Other Free','Slaves'] },
+  1820: { label: '1820 US Census', cols: ['Name','Age/Gender Group','Free White M','Free White F','Foreigners not naturalized','Agriculture','Commerce','Manufactures','Other Free','Slaves'] },
+  1830: { label: '1830 US Census', cols: ['Name','Age/Gender Group','Free White M','Free White F','Slaves','Free Colored Persons'] },
+  1840: { label: '1840 US Census', cols: ['Name','Age/Gender Group','Free White M','Free White F','Free Colored M','Free Colored F','Slaves','Occupation','Pensioners'] },
+  1850: { label: '1850 US Census', cols: ['Name','Age','Sex','Color','Occupation','Real Estate Value','Birthplace','Married within year','School within year','Cannot read/write'] },
+  1860: { label: '1860 US Census', cols: ['Name','Age','Sex','Color','Occupation','Real Estate Value','Personal Estate Value','Birthplace','Married within year','School within year','Cannot read/write'] },
+  1870: { label: '1870 US Census', cols: ['Name','Age','Sex','Color','Occupation','Real Estate Value','Personal Estate Value','Birthplace','Father foreign','Mother foreign','Born within year','Married within year','School within year','Cannot read/write','Male citizen 21+','Male citizen denied vote'] },
+  1880: { label: '1880 US Census', cols: ['Name','Relation to Head','Marital Status','Sex','Age','Color/Race','Occupation','Months Unemployed','Sick/Disabled','Birthplace','Father Birthplace','Mother Birthplace','Cannot read','Cannot write'] },
+  1900: { label: '1900 US Census', cols: ['Name','Relation to Head','Color/Race','Sex','Birth Month','Birth Year','Age','Marital Status','Years Married','Mother of how many children','Children living','Birthplace','Father Birthplace','Mother Birthplace','Years in US','Naturalization','Occupation','Months not employed','School (months)','Can read','Can write','Speaks English','Farm/Home owned','Mortgage'] },
+  1910: { label: '1910 US Census', cols: ['Name','Relation to Head','Sex','Race','Age','Marital Status','Years married','Mother of # children','Children living','Birthplace','Father Birthplace','Mother Birthplace','Years in US','Naturalized','Language spoken','Occupation','Industry','Employer/Employee/Own acct','Unemployed','Can read','Can write','Speaks English','Farm/home owned','Farm schedule no.','Civil War veteran','Blind/Deaf/Dumb'] },
+  1920: { label: '1920 US Census', cols: ['Name','Relation to Head','Sex','Race','Age','Marital Status','Year of immigration','Naturalized','Years in US','Birthplace','Mother tongue','Father birthplace','Father mother tongue','Mother birthplace','Mother mother tongue','Can read','Can write','Speaks English','Occupation','Industry','Employer/Employee/Own acct','Farm home owned','Farm schedule no.'] },
+  1930: { label: '1930 US Census', cols: ['Name','Relation to Head','Sex','Race','Age','Marital Status','Age at first marriage','School attendance','Can read/write','Birthplace','Father birthplace','Mother birthplace','Language spoken at home','Year of immigration','Naturalized','Can speak English','Occupation','Industry','Class of worker','Whether worked yesterday','Farm schedule no.','House owned/rented','Home value or rent','Radio set','Farm'] },
+  1940: { label: '1940 US Census', cols: ['Name','Relation to Head','Sex','Race','Age','Marital Status','Highest grade completed','Birthplace','Citizenship','City/town in 1935','County/state in 1935','Employed/At work','Industry','Class of worker','Weeks worked in 1939','Income in 1939','Farm schedule no.','House owned/rented','Home value/monthly rent','Nonfarm income > $50'] },
+  1950: { label: '1950 US Census', cols: ['Name','Relation to Head','Sex','Race','Age','Marital Status','Birthplace','If foreign born — year immigrated','Occupation','Industry','Class of worker','Hours worked in week','Weeks worked in 1949','Income in 1949'] },
+};
+const CENSUS_YEAR_OPTIONS = [1790,1800,1810,1820,1830,1840,1850,1860,1870,1880,1900,1910,1920,1930,1940,1950];
+let censusRows = []; // array of {id, cells:{colName:value}}
+
 function updateDocForm() {
   const type = document.getElementById('doc-type-select').value;
   const container = document.getElementById('doc-dynamic-fields');
+
+  if (type === 'census') {
+    renderCensusForm(container);
+    return;
+  }
+
   const fields = DOC_FORMS[type];
-  if (!fields) { container.innerHTML = ''; return; }
+  if (!fields || fields === 'DYNAMIC') { container.innerHTML = ''; return; }
+
+  // Quick-Create button for name fields
+  const nameFieldIds = ['df-person','df-household','df-testator','df-groom-name','df-bride-name','df-deceased','df-executor'];
+
   container.innerHTML = `<div style="background:var(--parchment2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:16px;">
     <div style="font-size:11px;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;color:var(--gold);margin-bottom:10px;">
       <i class="ti ti-forms" style="margin-right:4px;"></i> ${type.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())} Standard Fields
     </div>
-    <div class="grid-2">${fields.map(f => `<div class="form-group">
-      <label class="form-label">${f.label}</label>
-      ${f.type === 'textarea' ? `<textarea class="form-textarea" id="${f.id}" rows="2" placeholder="${f.label}"></textarea>` : `<input class="form-input" id="${f.id}" placeholder="${f.label}">`}
-    </div>`).join('')}</div>
+    <div class="grid-2">${fields.map(f => {
+      const isNameField = nameFieldIds.includes(f.id) || f.label.toLowerCase().includes('name');
+      return `<div class="form-group">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <label class="form-label" style="margin-bottom:4px;">${f.label}</label>
+          ${isNameField ? `<span class="census-quick-create" onclick="quickCreateFromField('${f.id}','${f.label}')"><i class="ti ti-user-plus" style="font-size:10px;"></i> Quick-create person</span>` : ''}
+        </div>
+        ${f.type === 'textarea'
+          ? `<textarea class="form-textarea" id="${f.id}" rows="2" placeholder="${f.label}"></textarea>`
+          : `<input class="form-input" id="${f.id}" placeholder="${f.label}">`}
+      </div>`;
+    }).join('')}</div>
   </div>`;
+}
+
+function renderCensusForm(container) {
+  const yr = parseInt(document.getElementById('census-year-select')?.value) || 1880;
+  const schema = CENSUS_SCHEMAS[yr] || CENSUS_SCHEMAS[1880];
+
+  container.innerHTML = `
+    <div style="background:var(--parchment2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;color:var(--gold);">
+          <i class="ti ti-list"></i> Census Household Roster
+        </div>
+        <select class="form-select form-select-sm" id="census-year-select" onchange="renderCensusForm(document.getElementById('doc-dynamic-fields'))" style="width:120px;">
+          ${CENSUS_YEAR_OPTIONS.map(y => `<option value="${y}" ${y===yr?'selected':''}>${y}</option>`).join('')}
+        </select>
+        <span style="font-size:11px;color:var(--ink3);">${schema.label}</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="census-table">
+          <thead><tr>
+            <th style="width:28px;">#</th>
+            ${schema.cols.map(c=>`<th>${c}</th>`).join('')}
+            <th style="width:60px;">Actions</th>
+          </tr></thead>
+          <tbody id="census-tbody"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:8px;">
+        <button class="btn btn-sm" onclick="addCensusRow()"><i class="ti ti-plus"></i> Add Row</button>
+        <button class="btn btn-sm" onclick="addCensusRow(true)"><i class="ti ti-user-plus"></i> Add Row &amp; Quick-Create Person</button>
+      </div>
+      <div style="font-size:11px;color:var(--ink3);margin-top:6px;">Each row is one person in the household. Click any cell to edit. Use "Quick-Create" to instantly add a person to your archive from this row.</div>
+    </div>`;
+
+  // Restore existing rows or start with 1 blank
+  if (!censusRows.length) censusRows = [{ id: genId(), cells: {} }];
+  renderCensusRows(schema);
+}
+
+function renderCensusRows(schema) {
+  const yr = parseInt(document.getElementById('census-year-select')?.value) || 1880;
+  const s = schema || CENSUS_SCHEMAS[yr] || CENSUS_SCHEMAS[1880];
+  const tbody = document.getElementById('census-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = censusRows.map((row, i) => `
+    <tr data-row="${row.id}">
+      <td style="text-align:center;color:var(--ink3);font-size:11px;">${i+1}</td>
+      ${s.cols.map(col => {
+        const key = col.replace(/[^a-zA-Z0-9]/g,'_');
+        return `<td><input value="${(row.cells[key]||'').replace(/"/g,'&quot;')}" onchange="setCensusCell('${row.id}','${key}',this.value)" placeholder="—"></td>`;
+      }).join('')}
+      <td style="text-align:center;white-space:nowrap;">
+        <span class="census-quick-create" title="Quick-create a person from this row" onclick="quickCreateFromCensusRow('${row.id}')"><i class="ti ti-user-plus"></i></span>
+        &nbsp;
+        <span style="color:var(--rust);cursor:pointer;font-size:13px;" title="Remove row" onclick="removeCensusRow('${row.id}')"><i class="ti ti-trash"></i></span>
+      </td>
+    </tr>`).join('');
+}
+
+function addCensusRow(andCreate = false) {
+  const row = { id: genId(), cells: {} };
+  censusRows.push(row);
+  const yr = parseInt(document.getElementById('census-year-select')?.value) || 1880;
+  renderCensusRows(CENSUS_SCHEMAS[yr]);
+  if (andCreate) quickCreateFromCensusRow(row.id);
+}
+
+function removeCensusRow(rowId) {
+  censusRows = censusRows.filter(r => r.id !== rowId);
+  const yr = parseInt(document.getElementById('census-year-select')?.value) || 1880;
+  renderCensusRows(CENSUS_SCHEMAS[yr]);
+}
+
+function setCensusCell(rowId, col, val) {
+  const row = censusRows.find(r => r.id === rowId);
+  if (row) row.cells[col] = val;
+}
+
+function quickCreateFromCensusRow(rowId) {
+  const row = censusRows.find(r => r.id === rowId);
+  if (!row) return;
+  const yr = parseInt(document.getElementById('census-year-select')?.value) || 1880;
+  const schema = CENSUS_SCHEMAS[yr] || CENSUS_SCHEMAS[1880];
+  const cells = row.cells;
+
+  // Pull name from the Name column (always first col)
+  const nameKey = schema.cols[0].replace(/[^a-zA-Z0-9]/g,'_');
+  const fullNameStr = cells[nameKey] || '';
+  const parts = fullNameStr.trim().split(/\s+/);
+  const fn = parts[0] || '';
+  const ln = parts.slice(1).join(' ') || '';
+
+  // Pull other fields intelligently by column label
+  const ageKey   = schema.cols.find(c=>c.toLowerCase().includes('age'))?.replace(/[^a-zA-Z0-9]/g,'_') || '';
+  const bpKey    = schema.cols.find(c=>c.toLowerCase().includes('birthplace')||c.toLowerCase().includes('birth place'))?.replace(/[^a-zA-Z0-9]/g,'_') || '';
+  const relKey   = schema.cols.find(c=>c.toLowerCase().includes('relation'))?.replace(/[^a-zA-Z0-9]/g,'_') || '';
+  const occKey   = schema.cols.find(c=>c.toLowerCase().includes('occupation'))?.replace(/[^a-zA-Z0-9]/g,'_') || '';
+  const sexKey   = schema.cols.find(c=>c.toLowerCase().includes('sex')||c==='Sex')?.replace(/[^a-zA-Z0-9]/g,'_') || '';
+
+  const age  = cells[ageKey]  || '';
+  const bp   = cells[bpKey]   || '';
+  const occ  = cells[occKey]  || '';
+  const sex  = cells[sexKey]  || '';
+
+  // Estimate birth year from age and census year
+  const byEst = age ? (yr - parseInt(age)) : '';
+
+  // Populate the add-person modal
+  openModal('add-person-modal');
+  switchApTab('core');
+  document.getElementById('ap-firstname').value = fn;
+  document.getElementById('ap-lastname').value  = ln;
+  document.getElementById('ap-birthdate').value = byEst ? `abt ${byEst}` : '';
+  document.getElementById('ap-birthplace').value = bp;
+  document.getElementById('ap-occupation').value = occ;
+  if (sex.toLowerCase().startsWith('m')) document.getElementById('ap-gender').value = 'M';
+  else if (sex.toLowerCase().startsWith('f')) document.getElementById('ap-gender').value = 'F';
+  document.getElementById('ap-birth-conf').value = 'estimated';
+  document.getElementById('ap-tags').value = `census ${yr}`;
+}
+
+function quickCreateFromField(fieldId, fieldLabel) {
+  const input = document.getElementById(fieldId);
+  if (!input) return;
+  const nameStr = input.value.trim();
+  const parts   = nameStr.split(/\s+/);
+  openModal('add-person-modal');
+  switchApTab('core');
+  document.getElementById('ap-firstname').value = parts[0] || '';
+  document.getElementById('ap-lastname').value  = parts.slice(1).join(' ') || '';
+  document.getElementById('ap-tags').value = fieldLabel.toLowerCase();
 }
 
 function saveDocument() {
@@ -3021,9 +3715,48 @@ function saveDocForm() {
 function viewDoc(id) {
   const d = DB.documents.find(x => x.id === id);
   if (!d) return;
+
+  document.getElementById('vdm-title').textContent = d.title || 'Document';
+  document.getElementById('vdm-delete-btn').onclick = () => {
+    if (!confirm('Delete this document? This cannot be undone.')) return;
+    DB.documents = DB.documents.filter(x => x.id !== id);
+    save(); closeModal('view-doc-modal'); renderDocs();
+  };
+
   const people = (d.peopleIds||[]).map(pid => { const p = DB.people.find(x=>x.id===pid); return p ? fullName(p) : ''; }).filter(Boolean);
-  const fieldHtml = Object.entries(d.formFields||{}).filter(([,v])=>v).map(([k,v]) => `<div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--border);"><span style="color:var(--ink3);">${k.replace('df-','').replace(/-/g,' ')}</span><span style="color:var(--ink);text-align:right;max-width:60%;">${v}</span></div>`).join('');
-  alert(`Document: ${d.title}\nType: ${d.docType}\nDate: ${d.date||'—'}\nPlace: ${d.place||'—'}\nPeople: ${people.join(', ')||'—'}\nRepo: ${d.repository||'—'}\n\n${d.notes ? 'Notes: '+d.notes : ''}`);
+  const fieldHtml = Object.entries(d.formFields||{}).filter(([,v])=>v).map(([k,v]) =>
+    `<div style="display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:7px 0;border-bottom:1px solid var(--border);">
+      <span style="color:var(--ink3);text-transform:capitalize;white-space:nowrap;">${k.replace(/^df-/,'').replace(/-/g,' ')}</span>
+      <span style="color:var(--ink);text-align:right;">${v}</span>
+    </div>`).join('');
+
+  const metaRows = [
+    d.docType   ? ['Type', d.docType.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())] : null,
+    d.date      ? ['Date', d.date] : null,
+    d.place     ? ['Place', d.place] : null,
+    d.repository? ['Repository', d.repository] : null,
+    people.length?['People', people.join(', ')] : null,
+  ].filter(Boolean).map(([l,v]) =>
+    `<div style="display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:7px 0;border-bottom:1px solid var(--border);">
+      <span style="color:var(--ink3);white-space:nowrap;">${l}</span>
+      <span style="color:var(--ink);text-align:right;">${v}</span>
+    </div>`).join('');
+
+  // File/image preview if stored
+  const filePreview = d.fileData
+    ? (d.fileData.startsWith('data:image')
+        ? `<img src="${d.fileData}" style="max-width:100%;border-radius:var(--radius);margin-bottom:16px;border:1px solid var(--border);">`
+        : `<div style="padding:12px;background:var(--parchment2);border-radius:var(--radius);margin-bottom:16px;font-size:13px;color:var(--ink3);"><i class="ti ti-file"></i> Attached file (${d.fileName||'document'})</div>`)
+    : '';
+
+  document.getElementById('vdm-body').innerHTML = `
+    <div style="padding:20px;">
+      ${filePreview}
+      ${metaRows ? `<div style="margin-bottom:16px;">${metaRows}</div>` : ''}
+      ${fieldHtml ? `<div style="margin-bottom:16px;"><div style="font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:8px;">Form Fields</div>${fieldHtml}</div>` : ''}
+      ${d.notes ? `<div style="margin-top:16px;padding:12px;background:var(--parchment2);border-radius:var(--radius);font-size:13px;color:var(--ink2);line-height:1.6;">${d.notes}</div>` : ''}
+    </div>`;
+  openModal('view-doc-modal');
 }
 
 function switchDocsView(view, btn) {
@@ -3107,8 +3840,35 @@ function renderGallery() {
 function viewPhoto(id) {
   const ph = DB.photos.find(x => x.id === id);
   if (!ph) return;
+
+  document.getElementById('vpm-title').textContent = ph.caption || 'Photo';
+  document.getElementById('vpm-delete-btn').onclick = () => {
+    if (!confirm('Delete this photo? This cannot be undone.')) return;
+    DB.photos = DB.photos.filter(x => x.id !== id);
+    save(); closeModal('view-photo-modal'); renderGallery();
+  };
+
   const people = (ph.peopleIds||[]).map(pid => { const p = DB.people.find(x=>x.id===pid); return p ? fullName(p) : ''; }).filter(Boolean);
-  alert(`Photo: ${ph.caption||'Untitled'}\nDate: ${ph.date||'—'}\nLocation: ${ph.location||'—'}\nPeople: ${people.join(', ')||'—'}\nSource: ${ph.source||'—'}\n${ph.notes ? '\n'+ph.notes : ''}`);
+  const meta = [
+    ph.date     ? `<span><i class="ti ti-calendar" style="font-size:12px;"></i> ${ph.date}</span>` : '',
+    ph.location ? `<span><i class="ti ti-map-pin" style="font-size:12px;"></i> ${ph.location}</span>` : '',
+    people.length?`<span><i class="ti ti-users" style="font-size:12px;"></i> ${people.join(', ')}</span>` : '',
+    ph.source   ? `<span><i class="ti ti-book" style="font-size:12px;"></i> ${ph.source}</span>` : '',
+  ].filter(Boolean).join('');
+
+  // Build a thumbnail reel for the photos array if multiple images stored
+  const imgs = Array.isArray(ph.images) ? ph.images : (ph.src ? [ph.src] : []);
+  const imgHtml = imgs.length
+    ? `<div style="background:#000;text-align:center;"><img src="${imgs[0]}" id="vpm-main-img" style="max-height:420px;max-width:100%;object-fit:contain;"></div>`
+    : `<div style="background:var(--parchment2);height:200px;display:flex;align-items:center;justify-content:center;color:var(--ink3);"><i class="ti ti-photo" style="font-size:48px;"></i></div>`;
+
+  document.getElementById('vpm-body').innerHTML = `
+    ${imgHtml}
+    <div style="padding:16px 20px;">
+      ${meta ? `<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--ink3);margin-bottom:12px;">${meta}</div>` : ''}
+      ${ph.notes ? `<div style="font-size:13px;color:var(--ink2);line-height:1.6;font-style:italic;">${ph.notes}</div>` : ''}
+    </div>`;
+  openModal('view-photo-modal');
 }
 
 // ── COMMUNICATIONS ───────────────────────────────────────────────
@@ -3154,7 +3914,7 @@ function renderComms() {
   }
 
   container.innerHTML = comms.map(c => `
-    <div class="comm-item">
+    <div class="comm-item" onclick="viewComm('${c.id}')" style="cursor:pointer;">
       <div class="comm-avatar"><i class="ti ${commTypeIcon[c.type]||'ti-mail'}" style="font-size:16px;"></i></div>
       <div style="flex:1;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
@@ -3164,10 +3924,44 @@ function renderComms() {
           ${c.to ? `<span class="comm-meta">To: ${c.to}</span>` : ''}
         </div>
         ${c.subject ? `<div style="font-weight:500;font-size:13px;margin-bottom:4px;">${c.subject}</div>` : ''}
-        ${c.content ? `<div class="comm-content">${c.content.substring(0,300)}${c.content.length>300?'…':''}</div>` : ''}
+        ${c.content ? `<div class="comm-content">${c.content.substring(0,300)}${c.content.length>300?'… <span style="color:var(--gold);font-size:11px;">Read more</span>':''}</div>` : ''}
         ${c.location ? `<div style="font-size:11px;color:var(--ink3);margin-top:4px;font-style:italic;">Location: ${c.location}</div>` : ''}
       </div>
+      <i class="ti ti-chevron-right" style="font-size:14px;color:var(--ink3);flex-shrink:0;"></i>
     </div>`).join('');
+}
+
+function viewComm(id) {
+  const c = DB.communications.find(x => x.id === id);
+  if (!c) return;
+
+  document.getElementById('vcm-title').textContent = c.subject || c.type || 'Communication';
+  document.getElementById('vcm-delete-btn').onclick = () => {
+    if (!confirm('Delete this entry? This cannot be undone.')) return;
+    DB.communications = DB.communications.filter(x => x.id !== id);
+    save(); closeModal('view-comm-modal'); renderComms();
+  };
+
+  const people = (c.peopleIds||[]).map(pid => { const p = DB.people.find(x=>x.id===pid); return p ? fullName(p) : ''; }).filter(Boolean);
+  const metaRows = [
+    ['Type', c.type],
+    c.date     ? ['Date', c.date] : null,
+    c.from     ? ['From', c.from] : null,
+    c.to       ? ['To', c.to] : null,
+    c.location ? ['Location', c.location] : null,
+    people.length?['People', people.join(', ')] : null,
+  ].filter(Boolean).map(([l,v]) =>
+    `<div style="display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:7px 0;border-bottom:1px solid var(--border);">
+      <span style="color:var(--ink3);white-space:nowrap;">${l}</span>
+      <span style="color:var(--ink);text-align:right;">${v}</span>
+    </div>`).join('');
+
+  document.getElementById('vcm-body').innerHTML = `
+    <div style="padding:20px;">
+      ${metaRows ? `<div style="margin-bottom:16px;">${metaRows}</div>` : ''}
+      ${c.content ? `<div style="background:var(--parchment2);border-radius:var(--radius);padding:16px;font-size:14px;line-height:1.75;white-space:pre-wrap;color:var(--ink);">${c.content}</div>` : ''}
+    </div>`;
+  openModal('view-comm-modal');
 }
 
 // ── SOURCES ──────────────────────────────────────────────────────
@@ -3206,9 +4000,18 @@ function renderSources() {
           ${s.url ? `<a href="${s.url}" target="_blank" style="font-size:11px;color:var(--gold);margin-top:4px;display:block;">${s.url}</a>` : ''}
           ${s.notes ? `<div style="font-size:12px;color:var(--ink3);margin-top:4px;">${s.notes}</div>` : ''}
         </div>
-        <span class="tag tag-source">${s.type}</span>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+          <span class="tag tag-source">${s.type}</span>
+          <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteSource('${s.id}')"><i class="ti ti-trash"></i></button>
+        </div>
       </div>
     </div>`).join('')}</div>`;
+}
+
+function deleteSource(id) {
+  if (!confirm('Delete this source? This cannot be undone.')) return;
+  DB.sources = DB.sources.filter(x => x.id !== id);
+  save(); renderSources();
 }
 
 // ── RESEARCH TASKS ───────────────────────────────────────────────
