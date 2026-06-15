@@ -215,6 +215,8 @@
   .btn-gold { background: var(--gold); color: white; border-color: var(--gold); }
   .btn-gold:hover { background: var(--gold2); }
   .btn-danger { background: var(--danger); color: white; border-color: var(--danger); }
+  .btn-gold { background: var(--gold); color: #fff; border-color: var(--gold); }
+  .btn-gold:hover { background: var(--gold2); border-color: var(--gold2); }
   .btn-sm { padding: 4px 10px; font-size: 12px; }
   .btn .ti { font-size: 15px; }
 
@@ -617,36 +619,121 @@
     .grid-4 { grid-template-columns: repeat(2, 1fr); }
   }
   @media (max-width: 680px) {
+    /* Sidebar hidden on mobile — nav tabs replace it */
     #sidebar { display: none; }
-    .grid-3 { grid-template-columns: 1fr; }
-    .form-row { grid-template-columns: 1fr; }
 
-    /* Header: split into two rows so action icons never get pushed off-screen */
+    /* All grids collapse to single column */
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr !important; }
+    .form-row, .form-row-3 { grid-template-columns: 1fr !important; }
+    .fb-sibling-row, .fb-child-row { grid-template-columns: 1fr 1fr 80px 32px !important; }
+    .fan-row { grid-template-columns: 1fr 110px 32px !important; }
+    .fan-row .form-group:nth-child(3) { display: none; } /* hide notes col on mobile, fits in card */
+
+    /* Header */
     #app-header {
       flex-wrap: wrap;
       height: auto;
       padding: 8px 12px;
-      gap: 8px;
+      gap: 6px;
       row-gap: 6px;
     }
-    #app-header .logo { font-size: 17px; }
-    #app-header .logo span { font-size: 11px; }
+    #app-header .logo { font-size: 16px; }
+    #app-header .logo span { font-size: 10px; }
 
-    /* Nav tabs move to their own full-width, horizontally-scrollable row */
+    /* Nav: scrollable icon+label tabs */
     #nav-tabs {
       order: 1;
       flex: 1 1 100%;
       margin-left: 0;
       gap: 0;
+      overflow-x: auto;
       -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
     }
-    .nav-tab { padding: 6px 10px; font-size: 12px; }
-    .nav-tab .ti { font-size: 14px; }
+    #nav-tabs::-webkit-scrollbar { display: none; }
+    .nav-tab { padding: 6px 10px; font-size: 11px; white-space: nowrap; flex-shrink: 0; }
 
-    /* Trim action row so it fits beside the logo */
-    #header-actions { gap: 6px; }
-    .icon-btn { width: 28px; height: 28px; font-size: 14px; }
+    /* Header action buttons */
+    #header-actions { gap: 4px; }
+    .icon-btn { width: 28px; height: 28px; font-size: 13px; }
     #sync-label { display: none; }
+
+    /* Panel headers: stack title + actions vertically */
+    .panel-header {
+      padding: 12px 14px 10px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .panel-title { font-size: 18px; }
+    .panel-actions {
+      width: 100%;
+      margin-left: 0;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    /* Search inputs: full width */
+    .panel-actions .search-wrap { flex: 1 1 100%; }
+    .panel-actions .search-wrap input,
+    .panel-actions input.form-input { width: 100% !important; min-width: 0; box-sizing: border-box; }
+
+    /* Selects in panel headers: compact */
+    .panel-actions .form-select { flex: 1; min-width: 100px; }
+
+    /* Add button: full width on its own row */
+    .panel-actions .btn-primary { width: 100%; justify-content: center; }
+
+    /* Panel body padding */
+    .panel > div[style*="padding:20px"],
+    .panel > div[style*="padding: 20px"] { padding: 12px !important; }
+
+    /* Person cards: stack nicely */
+    .person-card { padding: 12px; }
+
+    /* Document grid → single col */
+    .doc-grid { grid-template-columns: 1fr !important; }
+
+    /* Timeline: tighter */
+    .timeline-item { gap: 8px; }
+    .tl-year { font-size: 11px; }
+
+    /* Person detail modal: full screen */
+    #person-full-modal .modal,
+    #view-doc-modal .modal,
+    #view-photo-modal .modal,
+    #view-comm-modal .modal,
+    #add-person-modal .modal,
+    #add-event-modal .modal,
+    #add-document-modal .modal { max-width: 100% !important; width: 100%; margin: 0; border-radius: 0; max-height: 100vh !important; height: 100vh; }
+
+    /* Modal body scrollable */
+    .modal-body { max-height: calc(100vh - 120px); }
+
+    /* Census table: scroll horizontally within its container */
+    .census-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+    /* FAN badges wrap */
+    .fan-badge { max-width: 100%; }
+
+    /* Stat cards 2-up */
+    .grid-4#dash-stats { grid-template-columns: 1fr 1fr !important; }
+
+    /* Confidence row wraps */
+    .fact-confidence-row { flex-direction: column; align-items: stretch; }
+    .fact-confidence-row .form-select-sm { width: 100%; }
+
+    /* AP tab labels: icons only on very small */
+    .ap-tab { padding: 8px 10px; font-size: 12px; }
+
+    /* Family builder cards */
+    .family-builder-card { padding: 10px; }
+  }
+
+  /* Extra-small (iPhone SE etc) */
+  @media (max-width: 390px) {
+    .nav-tab span { display: none; } /* icon only in nav */
+    .btn-primary span { display: none; }
+    .panel-title { font-size: 16px; }
+    .grid-4#dash-stats { grid-template-columns: 1fr 1fr !important; }
   }
 </style>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
@@ -887,9 +974,9 @@
         <div class="panel-actions">
           <div class="search-wrap">
             <i class="ti ti-search"></i>
-            <input class="form-input" id="people-search" placeholder="Search names, dates, places…" style="width:240px;" oninput="filterPeople(this.value)">
+            <input class="form-input" id="people-search" placeholder="Search names, dates, places…" style="width:200px;max-width:100%;" oninput="filterPeople(this.value)">
           </div>
-          <select class="form-select" style="width:130px;" id="people-sort" onchange="renderPeople()">
+          <select class="form-select" style="width:120px;max-width:100%;" id="people-sort" onchange="renderPeople()">
             <option value="name">Sort: Name</option>
             <option value="birth">Sort: Birth year</option>
             <option value="added">Sort: Date added</option>
@@ -913,10 +1000,10 @@
           <div class="panel-subtitle">Chronological events across all family lines</div>
         </div>
         <div class="panel-actions">
-          <select class="form-select" style="width:160px;" id="timeline-person-filter" onchange="renderTimeline()">
+          <select class="form-select" style="width:140px;max-width:100%;" id="timeline-person-filter" onchange="renderTimeline()">
             <option value="">All people</option>
           </select>
-          <select class="form-select" style="width:130px;" id="timeline-type-filter" onchange="renderTimeline()">
+          <select class="form-select" style="width:120px;max-width:100%;" id="timeline-type-filter" onchange="renderTimeline()">
             <option value="">All event types</option>
             <option value="birth">Birth</option>
             <option value="death">Death</option>
@@ -952,9 +1039,9 @@
         <div class="panel-actions">
           <div class="search-wrap">
             <i class="ti ti-search"></i>
-            <input class="form-input" id="docs-search" placeholder="Search documents…" style="width:200px;" oninput="filterDocs(this.value)">
+            <input class="form-input" id="docs-search" placeholder="Search documents…" style="width:180px;max-width:100%;" oninput="filterDocs(this.value)">
           </div>
-          <select class="form-select" style="width:150px;" id="doc-type-filter" onchange="filterDocs()">
+          <select class="form-select" style="width:130px;max-width:100%;" id="doc-type-filter" onchange="filterDocs()">
             <option value="">All document types</option>
             <option value="birth">Birth certificate</option>
             <option value="death">Death certificate</option>
@@ -990,10 +1077,10 @@
           <div class="panel-subtitle">Portraits, family photos, places &amp; artifacts</div>
         </div>
         <div class="panel-actions">
-          <select class="form-select" style="width:160px;" id="gallery-person-filter">
+          <select class="form-select" style="width:140px;max-width:100%;" id="gallery-person-filter">
             <option value="">All people</option>
           </select>
-          <select class="form-select" style="width:130px;" id="gallery-type-filter" onchange="renderGallery()">
+          <select class="form-select" style="width:120px;max-width:100%;" id="gallery-type-filter" onchange="renderGallery()">
             <option value="">All types</option>
             <option value="portrait">Portrait</option>
             <option value="family">Family group</option>
@@ -1024,10 +1111,10 @@
           <div class="panel-subtitle">Letters, telegrams, emails, phone calls &amp; contact log</div>
         </div>
         <div class="panel-actions">
-          <select class="form-select" style="width:160px;" id="comm-person-filter">
+          <select class="form-select" style="width:140px;max-width:100%;" id="comm-person-filter">
             <option value="">All people</option>
           </select>
-          <select class="form-select" style="width:130px;" id="comm-type-filter" onchange="renderComms()">
+          <select class="form-select" style="width:120px;max-width:100%;" id="comm-type-filter" onchange="renderComms()">
             <option value="">All types</option>
             <option value="letter">Letter</option>
             <option value="telegram">Telegram</option>
@@ -1080,7 +1167,7 @@
           <div class="panel-subtitle">Tasks, brick walls, to-do list &amp; research log</div>
         </div>
         <div class="panel-actions">
-          <select class="form-select" style="width:130px;" id="research-status-filter" onchange="renderResearch()">
+          <select class="form-select" style="width:120px;max-width:100%;" id="research-status-filter" onchange="renderResearch()">
             <option value="">All statuses</option>
             <option value="todo">To do</option>
             <option value="inprogress">In progress</option>
@@ -2122,7 +2209,8 @@
     <div class="modal-header">
       <i class="ti ti-user" style="font-size:20px;color:var(--gold)"></i>
       <div class="modal-title" id="pfm-name">Person Details</div>
-      <div style="margin-left:auto;display:flex;gap:8px;">
+      <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-sm btn-gold" onclick="addPersonFromProfile(currentPersonId)" style="white-space:nowrap;"><i class="ti ti-user-plus"></i> Add Family Member</button>
         <button class="btn btn-sm" onclick="editPerson(currentPersonId)"><i class="ti ti-edit"></i> Edit</button>
         <button class="btn btn-sm btn-danger" onclick="deletePerson(currentPersonId)"><i class="ti ti-trash"></i> Delete</button>
         <button class="modal-close" onclick="closeModal('person-full-modal')"><i class="ti ti-x"></i></button>
@@ -3010,6 +3098,8 @@ function openPersonDetail(id) {
         }).join('')}
       </div>
     </div>` : ''}
+
+    ${renderHintsSection(id)}
   `;
 
   openModal('person-full-modal');
@@ -3039,10 +3129,241 @@ function deletePerson(id) {
   DB.people = DB.people.filter(p => p.id !== id);
   DB.events = DB.events.filter(e => e.personId !== id);
   DB.relationships = DB.relationships.filter(r => r.person1Id !== id && r.person2Id !== id);
+  if (DB.fans) DB.fans = DB.fans.filter(f => f.person1Id !== id && f.person2Id !== id);
+  if (DB.factConfidence) delete DB.factConfidence[id];
   save();
   closeModal('person-full-modal');
   renderPeople();
   updateTreeRootSelect();
+}
+
+// ── ADD FAMILY MEMBER FROM PROFILE ───────────────────────────────
+function addPersonFromProfile(anchorPersonId) {
+  const anchor = DB.people.find(x => x.id === anchorPersonId);
+  // Pre-fill last name as a convenience
+  const ln = anchor?.lastName || '';
+
+  closeModal('person-full-modal');
+
+  // Small picker: what relationship is the new person?
+  const choice = window._pfpChoice = { anchorId: anchorPersonId };
+
+  // Build a quick inline prompt as a mini modal
+  const existing = document.getElementById('pfp-rel-picker');
+  if (existing) existing.remove();
+
+  const el = document.createElement('div');
+  el.id = 'pfp-rel-picker';
+  el.style.cssText = 'position:fixed;inset:0;z-index:1200;background:rgba(28,18,9,0.55);display:flex;align-items:center;justify-content:center;';
+  el.innerHTML = `
+    <div style="background:var(--surface);border-radius:var(--radius2);padding:24px;max-width:360px;width:90%;box-shadow:var(--shadow2);">
+      <div style="font-family:var(--font-serif);font-size:18px;margin-bottom:6px;">Add Family Member</div>
+      <div style="font-size:13px;color:var(--ink3);margin-bottom:16px;">
+        Who are you adding in relation to <strong>${anchor ? fullName(anchor) : 'this person'}</strong>?
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+        ${[
+          ['parent','Parent / Grandparent','ti-user'],
+          ['child','Child / Grandchild','ti-baby-carriage'],
+          ['spouse','Spouse / Partner','ti-rings'],
+          ['sibling','Sibling','ti-users'],
+          ['fan','FAN (associate)','ti-network'],
+          ['other','Other / Unrelated','ti-user-plus'],
+        ].map(([type,label,icon])=>`
+          <button onclick="launchAddPersonWithRel('${anchorPersonId}','${type}','${ln}')" style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--parchment2);cursor:pointer;font-size:13px;text-align:left;transition:background .15s;" onmouseover="this.style.background='var(--parchment3)'" onmouseout="this.style.background='var(--parchment2)'">
+            <i class="ti ${icon}" style="color:var(--gold);font-size:16px;flex-shrink:0;"></i> ${label}
+          </button>`).join('')}
+      </div>
+      <button onclick="document.getElementById('pfp-rel-picker').remove()" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);background:none;cursor:pointer;font-size:13px;color:var(--ink3);">Cancel</button>
+    </div>`;
+  document.body.appendChild(el);
+}
+
+function launchAddPersonWithRel(anchorId, relType, suggestedLastName) {
+  const picker = document.getElementById('pfp-rel-picker');
+  if (picker) picker.remove();
+
+  // Store pending relationship to wire up after save
+  window._pendingRel = { anchorId, relType };
+
+  // Pre-fill last name convenience
+  clearPersonForm();
+  if (relType !== 'spouse') {
+    document.getElementById('ap-lastname').value = suggestedLastName;
+  }
+
+  // Switch to appropriate tab
+  if (relType === 'fan') {
+    openModal('add-person-modal');
+    switchApTab('fan');
+    addFanRow();
+  } else if (relType === 'parent' || relType === 'child' || relType === 'sibling' || relType === 'spouse') {
+    openModal('add-person-modal');
+    switchApTab('core');
+  } else {
+    openModal('add-person-modal');
+    switchApTab('core');
+  }
+
+  // Show hint banner inside the modal
+  setTimeout(() => {
+    const body = document.querySelector('#add-person-modal .modal-body');
+    if (!body) return;
+    const banner = document.createElement('div');
+    banner.id = 'pfm-rel-hint';
+    banner.style.cssText = 'background:rgba(184,134,11,0.1);border:1px solid rgba(184,134,11,0.3);border-radius:var(--radius);padding:8px 12px;font-size:12px;color:var(--ink2);margin-bottom:12px;display:flex;align-items:center;gap:8px;';
+    const anchor = DB.people.find(x=>x.id===anchorId);
+    banner.innerHTML = `<i class="ti ti-link" style="color:var(--gold);"></i> Will be linked as <strong>${relType}</strong> of ${anchor ? fullName(anchor) : 'selected person'} after saving.`;
+    body.insertBefore(banner, body.firstChild);
+  }, 50);
+}
+
+// Hook into savePerson to wire pending relationship
+const _origSavePerson = savePerson;
+function savePerson() {
+  const hadPending = !!window._pendingRel;
+  const pendingSnap = window._pendingRel ? { ...window._pendingRel } : null;
+  window._pendingRel = null;
+  _origSavePerson();
+  if (hadPending && pendingSnap) {
+    // Find the person just added (last in array)
+    const newPerson = DB.people[DB.people.length - 1];
+    if (newPerson) wirePendingRel(pendingSnap.anchorId, newPerson.id, pendingSnap.relType);
+    // Re-open anchor's profile
+    setTimeout(() => openPersonDetail(pendingSnap.anchorId), 100);
+  }
+}
+
+function wirePendingRel(anchorId, newId, relType) {
+  if (!anchorId || !newId || anchorId === newId) return;
+  const exists = DB.relationships.find(r =>
+    ((r.person1Id===anchorId && r.person2Id===newId)||(r.person1Id===newId && r.person2Id===anchorId)) && r.type===relType);
+  if (exists) return;
+  // For parent: anchor is child of new person (new is the parent)
+  if (relType === 'parent') {
+    DB.relationships.push({ id: genId(), person1Id: newId, person2Id: anchorId, type: 'parent' });
+  } else if (relType === 'child') {
+    DB.relationships.push({ id: genId(), person1Id: anchorId, person2Id: newId, type: 'parent' });
+  } else {
+    DB.relationships.push({ id: genId(), person1Id: anchorId, person2Id: newId, type: relType });
+  }
+  save();
+}
+
+// ── RESEARCH HINTS SYSTEM ────────────────────────────────────────
+function generateHints(personId) {
+  const p = DB.people.find(x => x.id === personId);
+  if (!p) return [];
+  const hints = [];
+  const rels = DB.relationships.filter(r => r.person1Id===personId || r.person2Id===personId);
+  const relTypes = rels.map(r => r.type);
+  const docs = DB.documents.filter(d => (d.peopleIds||[]).includes(personId));
+  const docTypes = docs.map(d => d.docType);
+  const events = DB.events.filter(e => e.personId === personId);
+  const eventTypes = events.map(e => e.type);
+  const fc = DB.factConfidence?.[personId] || {};
+  const byYear = p.birthDate ? parseInt(p.birthDate.replace(/[^0-9]/g,'').slice(0,4)) : null;
+  const dyYear = p.deathDate ? parseInt(p.deathDate.replace(/[^0-9]/g,'').slice(0,4)) : null;
+
+  // Missing birth info
+  if (!p.birthDate) hints.push({ type:'missing', priority:'high', icon:'ti-baby-carriage', text:'No birth date recorded', action:'Add a birth date', actionFn:`editPerson('${personId}')` });
+  if (!p.birthPlace) hints.push({ type:'missing', priority:'medium', icon:'ti-map-pin', text:'No birth place recorded', action:'Add birth place', actionFn:`editPerson('${personId}')` });
+
+  // Missing death info for likely deceased
+  if (p.status==='deceased' && !p.deathDate) hints.push({ type:'missing', priority:'high', icon:'ti-cross', text:'Marked deceased but no death date', action:'Add death date', actionFn:`editPerson('${personId}')` });
+
+  // No parents
+  const hasParent = rels.some(r => r.type==='parent' && r.person2Id===personId);
+  if (!hasParent) hints.push({ type:'research', priority:'medium', icon:'ti-user', text:'No parents linked', action:'Add parents', actionFn:`addPersonFromProfile('${personId}')` });
+
+  // No spouse for adults
+  const hasSpouse = rels.some(r => r.type==='spouse');
+  if (!hasSpouse && byYear && byYear < 1960) hints.push({ type:'research', priority:'low', icon:'ti-rings', text:'No spouse recorded', action:'Add spouse', actionFn:`addPersonFromProfile('${personId}')` });
+
+  // Missing documents
+  if (!docTypes.includes('birth_certificate') && byYear && byYear > 1850)
+    hints.push({ type:'document', priority:'medium', icon:'ti-file-certificate', text:'No birth certificate on file', action:'Add birth certificate', actionFn:`openAddDocForPerson('${personId}','birth_certificate')` });
+  if (!docTypes.includes('death_certificate') && p.status==='deceased')
+    hints.push({ type:'document', priority:'medium', icon:'ti-file-certificate', text:'No death certificate on file', action:'Add death certificate', actionFn:`openAddDocForPerson('${personId}','death_certificate')` });
+
+  // Census hints: suggest relevant census years
+  if (byYear) {
+    const censusMilestones = [1850,1860,1870,1880,1900,1910,1920,1930,1940];
+    const relevantCensus = censusMilestones.filter(y => {
+      const ageAtCensus = y - byYear;
+      const stillAlive = !dyYear || y <= dyYear;
+      return ageAtCensus >= 0 && ageAtCensus <= 100 && stillAlive;
+    });
+    const hasCensus = docTypes.includes('census');
+    if (!hasCensus && relevantCensus.length > 0) {
+      hints.push({ type:'document', priority:'medium', icon:'ti-list', text:`Could appear in ${relevantCensus.slice(0,3).join(', ')} census`, action:'Add census record', actionFn:`openAddDocForPerson('${personId}','census')` });
+    }
+  }
+
+  // Unconfirmed facts
+  if (p.birthDate && !fc.birth?.level)
+    hints.push({ type:'confidence', priority:'low', icon:'ti-shield-check', text:'Birth date has no confidence rating', action:'Rate confidence', actionFn:`editPerson('${personId}')` });
+  if (p.deathDate && !fc.death?.level)
+    hints.push({ type:'confidence', priority:'low', icon:'ti-shield-check', text:'Death date has no confidence rating', action:'Rate confidence', actionFn:`editPerson('${personId}')` });
+
+  // No photo
+  if (!p.photo) hints.push({ type:'media', priority:'low', icon:'ti-camera', text:'No profile photo', action:'Add photo', actionFn:`editPerson('${personId}')` });
+
+  // No bio
+  if (!p.bio) hints.push({ type:'research', priority:'low', icon:'ti-notes', text:'No biography written', action:'Add biography', actionFn:`editPerson('${personId}')` });
+
+  // FAN check
+  const hasFan = (DB.fans||[]).some(f => f.person1Id===personId || f.person2Id===personId);
+  if (!hasFan && byYear && byYear < 1950)
+    hints.push({ type:'research', priority:'low', icon:'ti-network', text:'No FAN connections (witnesses, neighbors, associates)', action:'Add FAN connections', actionFn:`openPersonFanTab('${personId}')` });
+
+  return hints.sort((a,b) => (['high','medium','low'].indexOf(a.priority)) - (['high','medium','low'].indexOf(b.priority)));
+}
+
+function openAddDocForPerson(personId, docType) {
+  closeModal('person-full-modal');
+  openModal('add-document-modal');
+  setTimeout(() => {
+    const dtSel = document.getElementById('doc-type-select');
+    if (dtSel) { dtSel.value = docType; updateDocForm(); }
+    const ppSel = document.getElementById('doc-people-select');
+    if (ppSel) {
+      Array.from(ppSel.options).forEach(o => { o.selected = o.value === personId; });
+    }
+  }, 80);
+}
+
+function openPersonFanTab(personId) {
+  closeModal('person-full-modal');
+  clearPersonForm();
+  const p = DB.people.find(x=>x.id===personId);
+  if (p) {
+    document.getElementById('ap-firstname').value = p.firstName||'';
+    document.getElementById('ap-lastname').value  = p.lastName||'';
+  }
+  openModal('add-person-modal');
+  switchApTab('fan');
+}
+
+function renderHintsSection(personId) {
+  const hints = generateHints(personId);
+  if (!hints.length) return '';
+  const priorityColors = { high:'var(--rust)', medium:'var(--gold)', low:'var(--ink3)' };
+  const priorityBg = { high:'rgba(139,58,42,0.08)', medium:'rgba(184,134,11,0.08)', low:'var(--parchment2)' };
+  return `<div style="margin-top:20px;">
+    <div class="detail-section-title" style="display:flex;align-items:center;gap:8px;">
+      <i class="ti ti-bulb" style="color:var(--gold);"></i> Research Hints (${hints.length})
+      <span style="font-size:10px;font-weight:400;color:var(--ink3);">Click any to act on it</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+      ${hints.map(h=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:${priorityBg[h.priority]};border:1px solid var(--border);border-left:3px solid ${priorityColors[h.priority]};border-radius:var(--radius);cursor:pointer;" onclick="${h.actionFn}">
+          <i class="ti ${h.icon}" style="color:${priorityColors[h.priority]};font-size:14px;flex-shrink:0;"></i>
+          <div style="flex:1;font-size:12px;color:var(--ink);">${h.text}</div>
+          <span style="font-size:11px;color:var(--sepia2);white-space:nowrap;">${h.action} →</span>
+        </div>`).join('')}
+    </div>
+  </div>`;
 }
 
 function editPerson(id) {
@@ -3419,7 +3740,7 @@ function renderCensusForm(container) {
         </select>
         <span style="font-size:11px;color:var(--ink3);">${schema.label}</span>
       </div>
-      <div style="overflow-x:auto;">
+      <div class="census-table-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
         <table class="census-table">
           <thead><tr>
             <th style="width:28px;">#</th>
