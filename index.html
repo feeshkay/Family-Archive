@@ -779,6 +779,9 @@
     <button class="nav-tab" onclick="switchPanel('reports')" data-panel="reports">
       <i class="ti ti-report"></i> Reports
     </button>
+    <button class="nav-tab" onclick="switchPanel('bugs')" data-panel="bugs">
+      <i class="ti ti-bug"></i> Dev Log
+    </button>
   </nav>
   <div id="header-actions">
     <div class="sync-status" id="sync-status-indicator">
@@ -1077,7 +1080,7 @@
           <div class="panel-subtitle">Portraits, family photos, places &amp; artifacts</div>
         </div>
         <div class="panel-actions">
-          <select class="form-select" style="width:140px;max-width:100%;" id="gallery-person-filter">
+          <select class="form-select" style="width:140px;max-width:100%;" id="gallery-person-filter" onchange="renderGallery()">
             <option value="">All people</option>
           </select>
           <select class="form-select" style="width:120px;max-width:100%;" id="gallery-type-filter" onchange="renderGallery()">
@@ -1111,7 +1114,7 @@
           <div class="panel-subtitle">Letters, telegrams, emails, phone calls &amp; contact log</div>
         </div>
         <div class="panel-actions">
-          <select class="form-select" style="width:140px;max-width:100%;" id="comm-person-filter">
+          <select class="form-select" style="width:140px;max-width:100%;" id="comm-person-filter" onchange="renderComms()">
             <option value="">All people</option>
           </select>
           <select class="form-select" style="width:120px;max-width:100%;" id="comm-type-filter" onchange="renderComms()">
@@ -1184,6 +1187,48 @@
           <i class="ti ti-clipboard-list"></i>
           <h3>Research tracker is empty</h3>
           <p>Add tasks for missing records, brick walls, and leads to follow up on.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════ BUG TRACKER PANEL ═══════════════════ -->
+    <div class="panel" id="panel-bugs">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Dev Log</div>
+          <div class="panel-subtitle" id="bugs-count-label">Bug tracker &amp; feature log</div>
+        </div>
+        <div class="panel-actions">
+          <select class="form-select" style="width:120px;max-width:100%;" id="bug-status-filter" onchange="renderBugs()">
+            <option value="">All statuses</option>
+            <option value="open">🔴 Open</option>
+            <option value="in-progress">🟡 In Progress</option>
+            <option value="testing">🔵 Needs Testing</option>
+            <option value="fixed">✅ Fixed</option>
+            <option value="wontfix">⬛ Won't Fix</option>
+          </select>
+          <select class="form-select" style="width:120px;max-width:100%;" id="bug-type-filter" onchange="renderBugs()">
+            <option value="">All types</option>
+            <option value="bug">🐛 Bug</option>
+            <option value="feature">✨ Feature Request</option>
+            <option value="ux">📱 UX / Mobile</option>
+            <option value="data">💾 Data / Storage</option>
+            <option value="perf">⚡ Performance</option>
+          </select>
+          <button class="btn btn-primary" onclick="openModal('add-bug-modal')">
+            <i class="ti ti-plus"></i> Log Issue
+          </button>
+          <button class="btn" onclick="exportBugsMarkdown()" title="Export dev log as Markdown">
+            <i class="ti ti-markdown"></i>
+          </button>
+        </div>
+      </div>
+      <div style="padding:16px 20px;overflow-y:auto;flex:1;">
+        <div id="bugs-list"></div>
+        <div id="bugs-empty" style="display:none;text-align:center;padding:60px 20px;color:var(--ink3);">
+          <i class="ti ti-check" style="font-size:48px;color:var(--forest);display:block;margin-bottom:12px;"></i>
+          <h3 style="font-family:var(--font-serif);font-weight:normal;">All clear!</h3>
+          <p>No open issues. Log a bug or feature request above.</p>
         </div>
       </div>
     </div>
@@ -2265,6 +2310,91 @@
   </div>
 </div>
 
+<!-- ADD BUG / ISSUE MODAL -->
+<div class="modal-backdrop" id="add-bug-modal">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-header">
+      <i class="ti ti-bug" style="font-size:20px;color:var(--gold)"></i>
+      <div class="modal-title" id="bug-modal-title">Log Issue</div>
+      <button class="modal-close" onclick="closeModal('add-bug-modal')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Type</label>
+          <select class="form-select" id="bug-type">
+            <option value="bug">🐛 Bug</option>
+            <option value="feature">✨ Feature Request</option>
+            <option value="ux">📱 UX / Mobile</option>
+            <option value="data">💾 Data / Storage</option>
+            <option value="perf">⚡ Performance</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Priority</label>
+          <select class="form-select" id="bug-priority">
+            <option value="high">🔴 High</option>
+            <option value="medium">🟡 Medium</option>
+            <option value="low">⬜ Low</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Title <span style="color:var(--rust)">*</span></label>
+        <input class="form-input" id="bug-title" placeholder="Short description of the issue or feature">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Panel / Area</label>
+        <select class="form-select" id="bug-panel">
+          <option value="">— All / General —</option>
+          <option value="people">People</option>
+          <option value="tree">Family Tree</option>
+          <option value="timeline">Timeline</option>
+          <option value="documents">Documents / Census</option>
+          <option value="gallery">Gallery</option>
+          <option value="communications">Correspondence</option>
+          <option value="sources">Sources</option>
+          <option value="research">Research</option>
+          <option value="dna">DNA</option>
+          <option value="reports">Reports</option>
+          <option value="add-person">Add Person / Family Builder</option>
+          <option value="fan">FAN</option>
+          <option value="hints">Research Hints</option>
+          <option value="mobile">Mobile / Responsive</option>
+          <option value="sync">Gist Sync</option>
+          <option value="import-export">Import / Export</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Steps to Reproduce / Details</label>
+        <textarea class="form-textarea" id="bug-steps" rows="3" placeholder="What did you do? What happened? What did you expect?"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select class="form-select" id="bug-status">
+          <option value="open">🔴 Open</option>
+          <option value="in-progress">🟡 In Progress</option>
+          <option value="testing">🔵 Needs Testing</option>
+          <option value="fixed">✅ Fixed</option>
+          <option value="wontfix">⬛ Won't Fix</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Resolution Notes</label>
+        <textarea class="form-textarea" id="bug-resolution" rows="2" placeholder="What was fixed, how, or why it won't be fixed…"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Batch / Session</label>
+        <input class="form-input" id="bug-batch" placeholder="e.g. Session 3, June 2026">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('add-bug-modal')">Cancel</button>
+      <button class="btn btn-primary" id="bug-save-btn" onclick="saveBug()"><i class="ti ti-check"></i> Save Issue</button>
+    </div>
+  </div>
+</div>
+
 <!-- ADD FAMILY LINE MODAL -->
 <div class="modal-backdrop" id="add-family-line-modal">
   <div class="modal" style="max-width:420px;">
@@ -2404,6 +2534,7 @@ let DB = {
   communications: [],
   fans: [],          // Friends, Associates, Neighbors connections
   factConfidence: {}, // { personId: { fieldKey: { level, docId, note } } }
+  bugs: [],          // Dev log: bugs, features, UX issues
   sources: [],
   tasks: [],
   relationships: [],
@@ -2444,7 +2575,7 @@ function load() {
       const parsed = JSON.parse(raw);
       DB = Object.assign(DB, parsed);
       // ensure arrays exist
-      ['people','events','documents','photos','communications','sources','tasks','relationships','familyLines','fans']
+      ['people','events','documents','photos','communications','sources','tasks','relationships','familyLines','fans','bugs']
         .forEach(k => { if (!Array.isArray(DB[k])) DB[k] = []; });
       if (!DB.factConfidence || typeof DB.factConfidence !== 'object') DB.factConfidence = {};
       DB.settings = Object.assign(DB.settings, parsed.settings || {});
@@ -2473,6 +2604,7 @@ function switchPanel(name) {
   if (name === 'communications') renderComms();
   if (name === 'sources') renderSources();
   if (name === 'research') renderResearch();
+  if (name === 'bugs') renderBugs();
   if (name === 'dashboard') { updateDashStats(); renderDashRecent(); renderDashTasks(); }
 }
 
@@ -4413,6 +4545,226 @@ function toggleTaskStatus(id) {
   renderDashTasks();
 }
 
+// ── BUG TRACKER / DEV LOG ────────────────────────────────────────
+const BUG_TYPE_META = {
+  bug:     { icon: 'ti-bug',              label: '🐛 Bug',              color: 'var(--rust)'   },
+  feature: { icon: 'ti-sparkles',         label: '✨ Feature',          color: 'var(--forest)' },
+  ux:      { icon: 'ti-device-mobile',    label: '📱 UX / Mobile',      color: 'var(--navy)'   },
+  data:    { icon: 'ti-database',         label: '💾 Data',             color: 'var(--violet)' },
+  perf:    { icon: 'ti-bolt',             label: '⚡ Performance',      color: 'var(--sepia2)' },
+};
+const BUG_STATUS_META = {
+  'open':        { label: '🔴 Open',          bg: 'rgba(139,32,32,0.08)',  border: 'rgba(139,32,32,0.3)'  },
+  'in-progress': { label: '🟡 In Progress',   bg: 'rgba(184,134,11,0.08)', border: 'rgba(184,134,11,0.3)' },
+  'testing':     { label: '🔵 Needs Testing', bg: 'rgba(26,46,74,0.08)',   border: 'rgba(26,46,74,0.3)'   },
+  'fixed':       { label: '✅ Fixed',         bg: 'rgba(45,90,61,0.08)',   border: 'rgba(45,90,61,0.3)'   },
+  'wontfix':     { label: '⬛ Won\'t Fix',    bg: 'rgba(80,80,80,0.06)',   border: 'rgba(80,80,80,0.2)'   },
+};
+const BUG_PRIORITY_META = {
+  high:   { label: '🔴 High',   color: 'var(--rust)'  },
+  medium: { label: '🟡 Medium', color: 'var(--gold)'  },
+  low:    { label: '⬜ Low',    color: 'var(--ink3)'  },
+};
+
+function saveBug() {
+  const title = document.getElementById('bug-title').value.trim();
+  if (!title) { alert('Please enter a title.'); return; }
+  const isEdit = document.getElementById('bug-save-btn').dataset.editId;
+  if (isEdit) {
+    const bug = DB.bugs.find(b => b.id === isEdit);
+    if (bug) {
+      bug.type       = document.getElementById('bug-type').value;
+      bug.priority   = document.getElementById('bug-priority').value;
+      bug.title      = title;
+      bug.panel      = document.getElementById('bug-panel').value;
+      bug.steps      = document.getElementById('bug-steps').value.trim();
+      bug.status     = document.getElementById('bug-status').value;
+      bug.resolution = document.getElementById('bug-resolution').value.trim();
+      bug.batch      = document.getElementById('bug-batch').value.trim();
+      bug.updatedAt  = new Date().toISOString();
+    }
+    document.getElementById('bug-save-btn').dataset.editId = '';
+    document.getElementById('bug-modal-title').textContent = 'Log Issue';
+  } else {
+    DB.bugs.push({
+      id:         genId(),
+      type:       document.getElementById('bug-type').value,
+      priority:   document.getElementById('bug-priority').value,
+      title,
+      panel:      document.getElementById('bug-panel').value,
+      steps:      document.getElementById('bug-steps').value.trim(),
+      status:     document.getElementById('bug-status').value,
+      resolution: document.getElementById('bug-resolution').value.trim(),
+      batch:      document.getElementById('bug-batch').value.trim(),
+      loggedAt:   new Date().toISOString(),
+      updatedAt:  new Date().toISOString(),
+    });
+  }
+  save();
+  closeModal('add-bug-modal');
+  clearBugForm();
+  renderBugs();
+}
+
+function clearBugForm() {
+  ['bug-title','bug-steps','bug-resolution','bug-batch'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('bug-type').value     = 'bug';
+  document.getElementById('bug-priority').value = 'medium';
+  document.getElementById('bug-panel').value    = '';
+  document.getElementById('bug-status').value   = 'open';
+}
+
+function editBug(id) {
+  const bug = DB.bugs.find(b => b.id === id);
+  if (!bug) return;
+  document.getElementById('bug-type').value       = bug.type     || 'bug';
+  document.getElementById('bug-priority').value   = bug.priority || 'medium';
+  document.getElementById('bug-title').value      = bug.title    || '';
+  document.getElementById('bug-panel').value      = bug.panel    || '';
+  document.getElementById('bug-steps').value      = bug.steps    || '';
+  document.getElementById('bug-status').value     = bug.status   || 'open';
+  document.getElementById('bug-resolution').value = bug.resolution || '';
+  document.getElementById('bug-batch').value      = bug.batch    || '';
+  document.getElementById('bug-modal-title').textContent = 'Edit Issue';
+  document.getElementById('bug-save-btn').dataset.editId = id;
+  openModal('add-bug-modal');
+}
+
+function deleteBug(id) {
+  if (!confirm('Delete this issue? This cannot be undone.')) return;
+  DB.bugs = DB.bugs.filter(b => b.id !== id);
+  save(); renderBugs();
+}
+
+function cycleBugStatus(id) {
+  const bug = DB.bugs.find(b => b.id === id);
+  if (!bug) return;
+  const order = ['open','in-progress','testing','fixed','wontfix'];
+  const idx = order.indexOf(bug.status);
+  bug.status = order[(idx + 1) % order.length];
+  bug.updatedAt = new Date().toISOString();
+  save(); renderBugs();
+}
+
+function renderBugs() {
+  const statusFilter = document.getElementById('bug-status-filter')?.value || '';
+  const typeFilter   = document.getElementById('bug-type-filter')?.value   || '';
+  let bugs = [...(DB.bugs || [])];
+  if (statusFilter) bugs = bugs.filter(b => b.status === statusFilter);
+  if (typeFilter)   bugs = bugs.filter(b => b.type   === typeFilter);
+
+  // Sort: open/in-progress first, then by priority, then by date
+  const statusOrder = { open:0, 'in-progress':1, testing:2, fixed:3, wontfix:4 };
+  const priOrder    = { high:0, medium:1, low:2 };
+  bugs.sort((a,b) => {
+    const s = (statusOrder[a.status]||0) - (statusOrder[b.status]||0);
+    if (s !== 0) return s;
+    const p = (priOrder[a.priority]||1) - (priOrder[b.priority]||1);
+    if (p !== 0) return p;
+    return new Date(b.loggedAt||0) - new Date(a.loggedAt||0);
+  });
+
+  const list  = document.getElementById('bugs-list');
+  const empty = document.getElementById('bugs-empty');
+  const label = document.getElementById('bugs-count-label');
+  const total = DB.bugs?.length || 0;
+  const open  = (DB.bugs||[]).filter(b => b.status === 'open' || b.status === 'in-progress').length;
+  if (label) label.textContent = `${total} issues · ${open} open`;
+
+  if (!bugs.length) {
+    if (list)  list.innerHTML = '';
+    if (empty) empty.style.display = '';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  if (list) list.innerHTML = bugs.map(bug => {
+    const tm = BUG_TYPE_META[bug.type]   || BUG_TYPE_META.bug;
+    const sm = BUG_STATUS_META[bug.status] || BUG_STATUS_META.open;
+    const pm = BUG_PRIORITY_META[bug.priority] || BUG_PRIORITY_META.medium;
+    const date = bug.loggedAt ? new Date(bug.loggedAt).toLocaleDateString() : '';
+    const updated = bug.updatedAt && bug.updatedAt !== bug.loggedAt ? ` · updated ${new Date(bug.updatedAt).toLocaleDateString()}` : '';
+    return `<div style="border:1px solid ${sm.border};border-left:4px solid ${sm.border};background:${sm.bg};border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;">
+      <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+            <span style="font-size:11px;padding:2px 7px;border-radius:3px;background:var(--parchment3);color:${tm.color};font-weight:600;white-space:nowrap;"><i class="ti ${tm.icon}"></i> ${tm.label}</span>
+            <span style="font-size:11px;color:${pm.color};font-weight:600;white-space:nowrap;">${pm.label}</span>
+            ${bug.panel ? `<span style="font-size:11px;color:var(--ink3);background:var(--parchment2);padding:2px 6px;border-radius:3px;">${bug.panel}</span>` : ''}
+            <span style="font-size:11px;color:var(--ink3);margin-left:auto;white-space:nowrap;">${date}${updated}</span>
+          </div>
+          <div style="font-size:14px;font-weight:500;color:var(--ink);margin-bottom:${bug.steps||bug.resolution?'6px':'0'};">${bug.title}</div>
+          ${bug.steps ? `<div style="font-size:12px;color:var(--ink3);line-height:1.5;margin-bottom:4px;">${bug.steps}</div>` : ''}
+          ${bug.resolution ? `<div style="font-size:12px;color:var(--forest);font-style:italic;border-top:1px solid var(--border);padding-top:4px;margin-top:4px;"><i class="ti ti-check"></i> ${bug.resolution}</div>` : ''}
+          ${bug.batch ? `<div style="font-size:11px;color:var(--sepia2);margin-top:4px;"><i class="ti ti-tag"></i> ${bug.batch}</div>` : ''}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0;">
+          <button class="btn btn-sm" style="font-size:11px;padding:3px 8px;white-space:nowrap;" onclick="cycleBugStatus('${bug.id}')" title="Click to advance status">${sm.label}</button>
+          <div style="display:flex;gap:4px;">
+            <button class="btn btn-sm" style="padding:3px 7px;" onclick="editBug('${bug.id}')" title="Edit"><i class="ti ti-edit"></i></button>
+            <button class="btn btn-sm btn-danger" style="padding:3px 7px;" onclick="deleteBug('${bug.id}')" title="Delete"><i class="ti ti-trash"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function exportBugsMarkdown() {
+  const bugs = DB.bugs || [];
+  const open = bugs.filter(b => b.status === 'open' || b.status === 'in-progress' || b.status === 'testing');
+  const fixed = bugs.filter(b => b.status === 'fixed' || b.status === 'wontfix');
+  const lines = [
+    '# FamilyArchive Pro — Dev Log',
+    `_Exported ${new Date().toLocaleDateString()}_`,
+    '',
+    `## Open Issues (${open.length})`,
+    '',
+    ...open.map(b => {
+      const tm = BUG_TYPE_META[b.type]?.label || b.type;
+      const sm = BUG_STATUS_META[b.status]?.label || b.status;
+      const pm = BUG_PRIORITY_META[b.priority]?.label || b.priority;
+      return `### ${b.title}\n- **Type:** ${tm}\n- **Priority:** ${pm}\n- **Status:** ${sm}\n- **Panel:** ${b.panel||'General'}\n- **Batch:** ${b.batch||'—'}\n${b.steps?`- **Details:** ${b.steps}\n`:''}`;
+    }),
+    '',
+    `## Resolved (${fixed.length})`,
+    '',
+    ...fixed.map(b => {
+      return `- ~~${b.title}~~ — ${BUG_STATUS_META[b.status]?.label||b.status}${b.resolution?' · '+b.resolution:''}`;
+    }),
+  ];
+  const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'familyarchive_devlog.md';
+  a.click();
+}
+
+// Pre-populate with known issues from dev sessions
+function seedInitialBugs() {
+  if (DB.bugs && DB.bugs.length > 0) return; // don't re-seed
+  const seed = [
+    { type:'bug',     priority:'medium', title:'Gallery person-filter has no onchange handler', panel:'gallery',       status:'open',   steps:'Selecting a person in Gallery filter does nothing. renderGallery() not called on change.', batch:'Session 1' },
+    { type:'bug',     priority:'medium', title:'Comm person-filter has no onchange handler',    panel:'communications',status:'open',   steps:'Selecting a person in Correspondence filter does nothing. renderComms() not called on change.', batch:'Session 1' },
+    { type:'bug',     priority:'low',    title:'savePerson override (addPersonFromProfile) may double-fire if savePerson is called multiple times', panel:'add-person', status:'testing', steps:'The _origSavePerson / window._pendingRel pattern can misbehave if the modal is closed and reopened without saving. Needs guard.', batch:'Session 2' },
+    { type:'bug',     priority:'low',    title:'AI scan button in Document modal fires an alert instead of real OCR', panel:'documents', status:'open', steps:'Clicking the AI Scan button shows a placeholder alert. Needs real API call or removal.', batch:'Session 1' },
+    { type:'feature', priority:'high',   title:'Edit Events, Photos, Sources, Comms — no edit modal exists for these', panel:'people', status:'open', steps:'Users can add but not edit events, photos, sources, or communications. Only delete is available.', batch:'Session 1' },
+    { type:'feature', priority:'medium', title:'Document viewer: no preview for PDF/image attachments', panel:'documents', status:'open', steps:'viewDoc() shows metadata but uploaded file attachments are not previewed inline.', batch:'Session 1' },
+    { type:'ux',      priority:'high',   title:'Biography/Family Group Sheet report: prompt() is not mobile-friendly', panel:'reports', status:'open', steps:'Using window.prompt() for person/couple picker breaks on mobile Safari. Should be replaced with a modal picker.', batch:'Session 1' },
+    { type:'ux',      priority:'medium', title:'Census table too wide for mobile even with horizontal scroll', panel:'documents', status:'testing', steps:'The census household table scrolls horizontally on mobile but minimum column widths are very tight.', batch:'Session 2' },
+    { type:'ux',      priority:'low',    title:'Add Person modal: Family Builder selects not populated on first open', panel:'add-person', status:'open', steps:'If DB.people is empty when modal first opens, existing-person dropdowns are blank even after people are added later.', batch:'Session 2' },
+    { type:'feature', priority:'medium', title:'FAN tab note field hidden on mobile (intentional) — should be accessible somewhere', panel:'fan', status:'open', steps:'Fan context/note field is hidden on mobile via CSS to save space. Need alternate input (expandable row?)', batch:'Session 2' },
+    { type:'feature', priority:'low',    title:'Research Hints: no way to dismiss or snooze a hint', panel:'hints', status:'open', steps:'Hints regenerate every time. No way to say "I know, not applicable" for a specific hint.', batch:'Session 2' },
+    { type:'data',    priority:'medium', title:'Gist sync: fans and factConfidence arrays not included in serializeForGist()', panel:'sync', status:'fixed', steps:'The new fans[] and factConfidence{} fields may not round-trip through Gist sync if serializeForGist() does not include them.', resolution:'serializeForGist() does JSON.parse(JSON.stringify(DB)) — all fields included automatically.', batch:'Session 2' },
+  ];
+  seed.forEach(s => {
+    DB.bugs.push({ id: genId(), ...s, loggedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), resolution: '' });
+  });
+  save();
+}
+
 // ── RELATIONSHIPS ────────────────────────────────────────────────
 function saveRelationship() {
   const p1 = document.getElementById('rel-person1').value;
@@ -5416,6 +5768,7 @@ function refreshPersonSelects() {
 
 // ── INIT ──────────────────────────────────────────────────────────
 load();
+seedInitialBugs();
 updateDashStats();
 updateSidebarStats();
 updateTreeRootSelect();
