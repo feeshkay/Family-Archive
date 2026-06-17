@@ -126,6 +126,123 @@
   }
   .icon-btn:hover { background: rgba(255,255,255,0.1); }
 
+  /* ── UNIVERSAL SEARCH ── */
+  #usearch-backdrop {
+    position: fixed; inset: 0; z-index: 2000;
+    background: rgba(20,12,4,0.65);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding-top: 80px;
+    opacity: 0; pointer-events: none;
+    transition: opacity .15s;
+  }
+  #usearch-backdrop.open { opacity: 1; pointer-events: all; }
+  #usearch-box {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius2);
+    box-shadow: 0 24px 64px rgba(20,12,4,0.35);
+    width: 680px; max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 120px);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  #usearch-input-wrap {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  #usearch-input-wrap .ti { font-size: 20px; color: var(--ink3); flex-shrink: 0; }
+  #usearch-input {
+    flex: 1; border: none; background: none; font-size: 17px;
+    color: var(--ink); outline: none; font-family: var(--font-sans);
+  }
+  #usearch-input::placeholder { color: var(--ink3); }
+  #usearch-kbd { font-size: 11px; color: var(--ink3); background: var(--parchment3); border: 1px solid var(--border); border-radius: 3px; padding: 2px 5px; white-space: nowrap; flex-shrink: 0; }
+  #usearch-results {
+    overflow-y: auto; flex: 1;
+    padding: 8px 0;
+  }
+  .usearch-group-label {
+    font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--ink3); padding: 10px 18px 4px; margin: 0;
+  }
+  .usearch-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 9px 18px; cursor: pointer;
+    transition: background .1s;
+  }
+  .usearch-item:hover, .usearch-item.selected { background: var(--parchment2); }
+  .usearch-item-icon {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--parchment3); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: var(--sepia); flex-shrink: 0;
+    overflow: hidden;
+  }
+  .usearch-item-icon img { width: 100%; height: 100%; object-fit: cover; }
+  .usearch-item-main { flex: 1; min-width: 0; }
+  .usearch-item-title { font-size: 14px; font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .usearch-item-sub   { font-size: 12px; color: var(--ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .usearch-item-badge { font-size: 10px; padding: 2px 7px; border-radius: 10px; background: var(--parchment3); border: 1px solid var(--border); color: var(--ink3); flex-shrink: 0; white-space: nowrap; }
+  .usearch-empty { text-align: center; padding: 40px 20px; color: var(--ink3); font-size: 14px; }
+  #usearch-footer {
+    border-top: 1px solid var(--border); padding: 8px 18px;
+    display: flex; gap: 16px; align-items: center;
+    font-size: 11px; color: var(--ink3);
+  }
+  #usearch-footer kbd { background: var(--parchment3); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px; font-family: var(--font-mono); font-size: 11px; }
+
+  /* ── EXTERNAL SITES PANEL ── */
+  #ext-panel {
+    position: fixed; right: 0; top: 52px; bottom: 0; width: 340px;
+    background: var(--surface); border-left: 1px solid var(--border2);
+    box-shadow: -4px 0 24px rgba(20,12,4,0.12);
+    z-index: 500; display: flex; flex-direction: column;
+    transform: translateX(100%); transition: transform .22s cubic-bezier(.4,0,.2,1);
+  }
+  #ext-panel.open { transform: translateX(0); }
+  #ext-panel-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px; border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  #ext-panel-title { font-family: var(--font-serif); font-size: 16px; flex: 1; }
+  #ext-panel-body { flex: 1; overflow-y: auto; padding: 12px 14px; }
+  .ext-person-card {
+    background: var(--parchment2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 10px 12px; margin-bottom: 12px;
+    font-size: 13px;
+  }
+  .ext-site-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 0; border-bottom: 1px solid var(--border);
+  }
+  .ext-site-row:last-child { border-bottom: none; }
+  .ext-site-logo {
+    width: 32px; height: 32px; border-radius: 6px;
+    background: var(--parchment3); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: var(--sepia); flex-shrink: 0;
+    overflow: hidden; letter-spacing: -0.5px;
+  }
+  .ext-site-info { flex: 1; min-width: 0; }
+  .ext-site-name { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .ext-site-desc { font-size: 11px; color: var(--ink3); }
+  .ext-search-btn {
+    padding: 5px 10px; font-size: 12px; border-radius: var(--radius);
+    border: 1px solid var(--border2); background: var(--parchment);
+    color: var(--ink); cursor: pointer; white-space: nowrap;
+    text-decoration: none; display: inline-flex; align-items: center; gap: 4px;
+    transition: background .12s;
+  }
+  .ext-search-btn:hover { background: var(--parchment3); }
+  .ext-section-label { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink3); padding: 12px 0 6px; }
+  @media (max-width: 680px) {
+    #ext-panel { width: 100%; top: 0; z-index: 1500; }
+    #usearch-backdrop { padding-top: 20px; align-items: flex-start; }
+    #usearch-box { border-radius: var(--radius); }
+  }
+
   #main-content { flex: 1; display: flex; overflow: hidden; height: calc(100vh - 52px); }
 
   /* ── SIDEBAR ── */
@@ -784,6 +901,12 @@
     </button>
   </nav>
   <div id="header-actions">
+    <button class="icon-btn" onclick="openUniversalSearch()" data-tooltip="Universal Search (⌘K)" id="usearch-btn" style="border-color:rgba(184,134,11,0.4);">
+      <i class="ti ti-search"></i>
+    </button>
+    <button class="icon-btn" onclick="toggleExtPanel()" data-tooltip="Search External Sites" id="ext-panel-btn">
+      <i class="ti ti-world-search"></i>
+    </button>
     <div class="sync-status" id="sync-status-indicator">
       <div class="sync-dot" id="sync-dot"></div>
       <span id="sync-label" style="color:rgba(240,232,216,0.5); font-size:11px;">Not synced</span>
@@ -2256,6 +2379,7 @@
       <div class="modal-title" id="pfm-name">Person Details</div>
       <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn btn-sm btn-gold" onclick="addPersonFromProfile(currentPersonId)" style="white-space:nowrap;"><i class="ti ti-user-plus"></i> Add Family Member</button>
+        <button class="btn btn-sm" onclick="openExtPanelForPerson(currentPersonId)" style="white-space:nowrap;" title="Search external genealogy sites"><i class="ti ti-world-search"></i> Search Sites</button>
         <button class="btn btn-sm" onclick="editPerson(currentPersonId)"><i class="ti ti-edit"></i> Edit</button>
         <button class="btn btn-sm btn-danger" onclick="deletePerson(currentPersonId)"><i class="ti ti-trash"></i> Delete</button>
         <button class="modal-close" onclick="closeModal('person-full-modal')"><i class="ti ti-x"></i></button>
@@ -2287,6 +2411,7 @@
       <i class="ti ti-photo" style="font-size:20px;color:var(--gold)"></i>
       <div class="modal-title" id="vpm-title">Photo</div>
       <div style="margin-left:auto;display:flex;gap:8px;">
+        <button class="btn btn-sm" id="vpm-edit-btn"><i class="ti ti-edit"></i> Edit</button>
         <button class="btn btn-sm btn-danger" id="vpm-delete-btn"><i class="ti ti-trash"></i> Delete</button>
         <button class="modal-close" onclick="closeModal('view-photo-modal')"><i class="ti ti-x"></i></button>
       </div>
@@ -2307,6 +2432,251 @@
       </div>
     </div>
     <div class="modal-body" id="vcm-body"></div>
+  </div>
+</div>
+
+<!-- REPORT PICKER MODAL -->
+<div class="modal-backdrop" id="report-picker-modal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <i class="ti ti-report" style="font-size:20px;color:var(--gold)"></i>
+      <div class="modal-title" id="rpicker-title">Select</div>
+      <button class="modal-close" onclick="closeModal('report-picker-modal')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label" id="rpicker-label">Choose one:</label>
+        <select class="form-select" id="rpicker-select" size="8" style="height:auto;min-height:180px;"></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('report-picker-modal')">Cancel</button>
+      <button class="btn btn-primary" id="rpicker-confirm-btn" onclick="reportPickerConfirm()"><i class="ti ti-file-report"></i> Generate</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT EVENT MODAL -->
+<div class="modal-backdrop" id="edit-event-modal">
+  <div class="modal" style="max-width:540px;">
+    <div class="modal-header">
+      <i class="ti ti-calendar-event" style="font-size:20px;color:var(--gold)"></i>
+      <div class="modal-title">Edit Event</div>
+      <button class="modal-close" onclick="closeModal('edit-event-modal')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Event Type</label>
+          <select class="form-select" id="eed-type">
+            <option value="birth">Birth</option><option value="death">Death</option>
+            <option value="marriage">Marriage</option><option value="divorce">Divorce</option>
+            <option value="baptism">Baptism / Christening</option><option value="burial">Burial</option>
+            <option value="immigration">Immigration</option><option value="emigration">Emigration</option>
+            <option value="naturalization">Naturalization</option><option value="census">Census</option>
+            <option value="military_service">Military Service</option><option value="graduation">Graduation</option>
+            <option value="occupation">Occupation</option><option value="residence">Residence</option>
+            <option value="property">Property / Land</option><option value="will">Will / Probate</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confidence</label>
+          <select class="form-select" id="eed-confidence">
+            <option value="certain">✅ Certain</option>
+            <option value="probable">🟡 Probable</option>
+            <option value="possible">🟠 Possible</option>
+            <option value="estimated">⬜ Estimated</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input class="form-input" id="eed-date" placeholder="e.g. 23 Apr 1945">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Place</label>
+          <input class="form-input" id="eed-place" placeholder="City, State, Country">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-textarea" id="eed-desc" rows="3" placeholder="Details, circumstances, context…"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Source</label>
+        <input class="form-input" id="eed-source" placeholder="e.g. 1940 US Census, Ancestry.com">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('edit-event-modal')">Cancel</button>
+      <button class="btn btn-primary" id="eed-save-btn" onclick="saveEditEvent()"><i class="ti ti-check"></i> Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT SOURCE MODAL -->
+<div class="modal-backdrop" id="edit-source-modal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <i class="ti ti-book" style="font-size:20px;color:var(--gold)"></i>
+      <div class="modal-title">Edit Source</div>
+      <button class="modal-close" onclick="closeModal('edit-source-modal')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Source Type</label>
+          <select class="form-select" id="esd-type">
+            <option value="census">Census Record</option><option value="vital">Vital Record</option>
+            <option value="military">Military Record</option><option value="immigration">Immigration</option>
+            <option value="newspaper">Newspaper</option><option value="book">Book / Publication</option>
+            <option value="website">Website / Database</option><option value="oral">Oral History</option>
+            <option value="photo">Photograph</option><option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date Accessed</label>
+          <input class="form-input" id="esd-date" type="text" placeholder="e.g. 3 May 2024">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Title <span style="color:var(--rust)">*</span></label>
+        <input class="form-input" id="esd-title" placeholder="e.g. 1880 United States Federal Census">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Author / Agency</label>
+        <input class="form-input" id="esd-author" placeholder="Author, agency, or database name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Publisher / Repository</label>
+        <input class="form-input" id="esd-publisher" placeholder="e.g. Ancestry.com, FamilySearch, NARA">
+      </div>
+      <div class="form-group">
+        <label class="form-label">URL</label>
+        <input class="form-input" id="esd-url" type="url" placeholder="https://…">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Full Citation</label>
+        <textarea class="form-textarea" id="esd-citation" rows="3" placeholder="Full citation in your preferred style…"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="form-textarea" id="esd-notes" rows="2" placeholder="Quality, completeness, known issues…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('edit-source-modal')">Cancel</button>
+      <button class="btn btn-primary" id="esd-save-btn" onclick="saveEditSource()"><i class="ti ti-check"></i> Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT TASK MODAL -->
+<div class="modal-backdrop" id="edit-task-modal">
+  <div class="modal" style="max-width:540px;">
+    <div class="modal-header">
+      <i class="ti ti-clipboard-list" style="font-size:20px;color:var(--gold)"></i>
+      <div class="modal-title">Edit Research Task</div>
+      <button class="modal-close" onclick="closeModal('edit-task-modal')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Task Title <span style="color:var(--rust)">*</span></label>
+        <input class="form-input" id="etd-title" placeholder="What do you need to find or verify?">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-select" id="etd-status">
+            <option value="not-started">Not Started</option>
+            <option value="in-progress">In Progress</option>
+            <option value="completed">Completed</option>
+            <option value="on-hold">On Hold</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Priority</label>
+          <select class="form-select" id="etd-priority">
+            <option value="high">🔴 High</option>
+            <option value="medium">🟡 Medium</option>
+            <option value="low">⬜ Low</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Research Goal</label>
+        <textarea class="form-textarea" id="etd-goal" rows="2" placeholder="What specific question are you trying to answer?"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Sources to Search</label>
+        <textarea class="form-textarea" id="etd-sources" rows="2" placeholder="Repositories, databases, or record types…"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Progress Notes</label>
+        <textarea class="form-textarea" id="etd-notes" rows="3" placeholder="Progress, results, dead ends…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('edit-task-modal')">Cancel</button>
+      <button class="btn btn-primary" id="etd-save-btn" onclick="saveEditTask()"><i class="ti ti-check"></i> Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT PHOTO MODAL -->
+<div class="modal-backdrop" id="edit-photo-modal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <i class="ti ti-photo-edit" style="font-size:20px;color:var(--gold)"></i>
+      <div class="modal-title">Edit Photo</div>
+      <button class="modal-close" onclick="closeModal('edit-photo-modal')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div id="eph-preview" style="text-align:center;margin-bottom:14px;"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Caption</label>
+          <input class="form-input" id="eph-caption" placeholder="Describe this photo">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Photo Type</label>
+          <select class="form-select" id="eph-type">
+            <option value="portrait">Portrait</option><option value="family">Family group</option>
+            <option value="place">Place / location</option><option value="artifact">Artifact / heirloom</option>
+            <option value="document">Document scan</option><option value="event">Event</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Approximate Date</label>
+          <input class="form-input" id="eph-date" placeholder="e.g. circa 1955 or 12 Aug 1923">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Location</label>
+          <input class="form-input" id="eph-location" placeholder="Where was this taken?">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">People Tagged</label>
+        <select class="form-select" id="eph-people" multiple style="height:80px;"></select>
+        <div style="font-size:11px;color:var(--ink3);margin-top:4px;">Hold Ctrl/Cmd to select multiple</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Source / Provenance</label>
+        <input class="form-input" id="eph-source" placeholder="Who provided this? Where was it found?">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="form-textarea" id="eph-notes" rows="2" placeholder="Context, stories, or details…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('edit-photo-modal')">Cancel</button>
+      <button class="btn btn-primary" id="eph-save-btn" onclick="saveEditPhoto()"><i class="ti ti-check"></i> Save Changes</button>
+    </div>
   </div>
 </div>
 
@@ -3180,7 +3550,7 @@ function openPersonDetail(id) {
     <div style="margin-top:20px;">
       <div class="detail-section-title">Life Events (${personEvents.length})</div>
       ${personEvents.length
-        ? `<div class="timeline">${personEvents.map(ev=>timelineItemHtml(ev,p)).join('')}</div>`
+        ? `<div class="timeline">${personEvents.map(ev=>timelineItemHtml(ev,p,true)).join('')}</div>`
         : '<div style="font-size:13px;color:var(--ink3);">No events recorded</div>'}
     </div>
 
@@ -3449,7 +3819,12 @@ function generateHints(personId) {
   if (!hasFan && byYear && byYear < 1950)
     hints.push({ type:'research', priority:'low', icon:'ti-network', text:'No FAN connections (witnesses, neighbors, associates)', action:'Add FAN connections', actionFn:`openPersonFanTab('${personId}')` });
 
-  return hints.sort((a,b) => (['high','medium','low'].indexOf(a.priority)) - (['high','medium','low'].indexOf(b.priority)));
+  // Always: external sites
+  hints.push({ type:'research', priority:'low', icon:'ti-world-search', text:'Search external databases (Ancestry, FamilySearch, FindAGrave…)', action:'Search external sites', actionFn:`openExtPanelForPerson('${personId}')` });
+
+  return hints
+    .filter(h => !getDismissedHints(personId).includes(h.text))
+    .sort((a,b) => (['high','medium','low'].indexOf(a.priority)) - (['high','medium','low'].indexOf(b.priority)));
 }
 
 function openAddDocForPerson(personId, docType) {
@@ -3485,14 +3860,15 @@ function renderHintsSection(personId) {
   return `<div style="margin-top:20px;">
     <div class="detail-section-title" style="display:flex;align-items:center;gap:8px;">
       <i class="ti ti-bulb" style="color:var(--gold);"></i> Research Hints (${hints.length})
-      <span style="font-size:10px;font-weight:400;color:var(--ink3);">Click any to act on it</span>
+      <span style="font-size:10px;font-weight:400;color:var(--ink3);">Click to act · ✕ to dismiss</span>
     </div>
     <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
       ${hints.map(h=>`
-        <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:${priorityBg[h.priority]};border:1px solid var(--border);border-left:3px solid ${priorityColors[h.priority]};border-radius:var(--radius);cursor:pointer;" onclick="${h.actionFn}">
-          <i class="ti ${h.icon}" style="color:${priorityColors[h.priority]};font-size:14px;flex-shrink:0;"></i>
-          <div style="flex:1;font-size:12px;color:var(--ink);">${h.text}</div>
-          <span style="font-size:11px;color:var(--sepia2);white-space:nowrap;">${h.action} →</span>
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:${priorityBg[h.priority]};border:1px solid var(--border);border-left:3px solid ${priorityColors[h.priority]};border-radius:var(--radius);">
+          <i class="ti ${h.icon}" style="color:${priorityColors[h.priority]};font-size:14px;flex-shrink:0;cursor:pointer;" onclick="${h.actionFn}"></i>
+          <div style="flex:1;font-size:12px;color:var(--ink);cursor:pointer;" onclick="${h.actionFn}">${h.text}</div>
+          <span style="font-size:11px;color:var(--sepia2);white-space:nowrap;cursor:pointer;" onclick="${h.actionFn}">${h.action} →</span>
+          <span style="font-size:13px;color:var(--ink3);cursor:pointer;padding:0 4px;flex-shrink:0;" title="Dismiss this hint" onclick="dismissHint('${personId}','${h.text.replace(/'/g,"\\'")}')">✕</span>
         </div>`).join('')}
     </div>
   </div>`;
@@ -3664,12 +4040,17 @@ function eventTypeIcon(type) {
   return m[type] || 'ti-calendar';
 }
 
-function timelineItemHtml(ev, person) {
+function timelineItemHtml(ev, person, showActions = false) {
   const p = person || DB.people.find(x => x.id === ev.personId);
   const pName = p ? fullName(p) : '';
   const year = (ev.date||'').split(' ').pop();
   const typeClass = eventTypeColor(ev.type);
   const evTypeLabel = ev.type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const actions = showActions ? `
+    <div style="display:flex;gap:4px;margin-top:6px;">
+      <button class="btn btn-sm" style="padding:2px 7px;font-size:11px;" onclick="editEvent('${ev.id}')"><i class="ti ti-edit"></i> Edit</button>
+      <button class="btn btn-sm btn-danger" style="padding:2px 7px;font-size:11px;" onclick="deleteEvent('${ev.id}')"><i class="ti ti-trash"></i></button>
+    </div>` : '';
   return `<div class="timeline-item">
     <div class="timeline-year">${year||'?'}</div>
     <div class="timeline-dot ${typeClass}"></div>
@@ -3679,6 +4060,7 @@ function timelineItemHtml(ev, person) {
       ${ev.desc ? `<div class="event-desc" style="margin-top:2px;">${ev.desc}</div>` : ''}
       ${ev.source ? `<div class="event-source"><i class="ti ti-book" style="font-size:11px"></i> ${ev.source}</div>` : ''}
       ${ev.confidence && ev.confidence !== 'certain' ? `<span class="tag" style="font-size:10px;padding:1px 5px;">${ev.confidence}</span>` : ''}
+      ${actions}
     </div>
   </div>`;
 }
@@ -4295,6 +4677,7 @@ function viewPhoto(id) {
   if (!ph) return;
 
   document.getElementById('vpm-title').textContent = ph.caption || 'Photo';
+  document.getElementById('vpm-edit-btn').onclick = () => { closeModal('view-photo-modal'); editPhoto(id); };
   document.getElementById('vpm-delete-btn').onclick = () => {
     if (!confirm('Delete this photo? This cannot be undone.')) return;
     DB.photos = DB.photos.filter(x => x.id !== id);
@@ -4453,10 +4836,13 @@ function renderSources() {
           ${s.url ? `<a href="${s.url}" target="_blank" style="font-size:11px;color:var(--gold);margin-top:4px;display:block;">${s.url}</a>` : ''}
           ${s.notes ? `<div style="font-size:12px;color:var(--ink3);margin-top:4px;">${s.notes}</div>` : ''}
         </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-          <span class="tag tag-source">${s.type}</span>
-          <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteSource('${s.id}')"><i class="ti ti-trash"></i></button>
-        </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            <span class="tag tag-source">${s.type}</span>
+            <div style="display:flex;gap:4px;">
+              <button class="btn btn-sm" onclick="event.stopPropagation();editSource('${s.id}')"><i class="ti ti-edit"></i></button>
+              <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteSource('${s.id}')"><i class="ti ti-trash"></i></button>
+            </div>
+          </div>
       </div>
     </div>`).join('')}</div>`;
 }
@@ -4528,6 +4914,10 @@ function renderResearch() {
               <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
                 <span class="tag ${taskPriorityBadge[t.priority]||''}" style="font-size:10px;">${t.priority} priority</span>
                 <button class="btn btn-sm" onclick="toggleTaskStatus('${t.id}')">${t.status === 'done' ? '↩ Reopen' : '✓ Done'}</button>
+                <div style="display:flex;gap:4px;">
+                  <button class="btn btn-sm" style="padding:2px 7px;" onclick="editTask('${t.id}')"><i class="ti ti-edit"></i></button>
+                  <button class="btn btn-sm btn-danger" style="padding:2px 7px;" onclick="deleteTask('${t.id}')"><i class="ti ti-trash"></i></button>
+                </div>
               </div>
             </div>
           </div>`;
@@ -4750,14 +5140,21 @@ function seedInitialBugs() {
     { type:'bug',     priority:'medium', title:'Comm person-filter has no onchange handler',    panel:'communications',status:'open',   steps:'Selecting a person in Correspondence filter does nothing. renderComms() not called on change.', batch:'Session 1' },
     { type:'bug',     priority:'low',    title:'savePerson override (addPersonFromProfile) may double-fire if savePerson is called multiple times', panel:'add-person', status:'testing', steps:'The _origSavePerson / window._pendingRel pattern can misbehave if the modal is closed and reopened without saving. Needs guard.', batch:'Session 2' },
     { type:'bug',     priority:'low',    title:'AI scan button in Document modal fires an alert instead of real OCR', panel:'documents', status:'open', steps:'Clicking the AI Scan button shows a placeholder alert. Needs real API call or removal.', batch:'Session 1' },
-    { type:'feature', priority:'high',   title:'Edit Events, Photos, Sources, Comms — no edit modal exists for these', panel:'people', status:'open', steps:'Users can add but not edit events, photos, sources, or communications. Only delete is available.', batch:'Session 1' },
+    { type:'feature', priority:'high',   title:'Edit Events, Photos, Sources, Comms — no edit modal exists for these', panel:'people', status:'fixed', steps:'Users can add but not edit events, photos, sources, or communications. Only delete is available.', resolution:'editEvent(), editPhoto(), editSource(), editTask() all implemented with full modals. Delete also added to events/tasks.', batch:'Session 1' },
     { type:'feature', priority:'medium', title:'Document viewer: no preview for PDF/image attachments', panel:'documents', status:'open', steps:'viewDoc() shows metadata but uploaded file attachments are not previewed inline.', batch:'Session 1' },
-    { type:'ux',      priority:'high',   title:'Biography/Family Group Sheet report: prompt() is not mobile-friendly', panel:'reports', status:'open', steps:'Using window.prompt() for person/couple picker breaks on mobile Safari. Should be replaced with a modal picker.', batch:'Session 1' },
+    { type:'ux',      priority:'high',   title:'Biography/Family Group Sheet report: prompt() is not mobile-friendly', panel:'reports', status:'fixed', steps:'Using window.prompt() for person/couple picker breaks on mobile Safari. Should be replaced with a modal picker.', resolution:'Replaced with openReportPicker() modal — list of people/couples with select element, confirm button.', batch:'Session 1' },
     { type:'ux',      priority:'medium', title:'Census table too wide for mobile even with horizontal scroll', panel:'documents', status:'testing', steps:'The census household table scrolls horizontally on mobile but minimum column widths are very tight.', batch:'Session 2' },
     { type:'ux',      priority:'low',    title:'Add Person modal: Family Builder selects not populated on first open', panel:'add-person', status:'open', steps:'If DB.people is empty when modal first opens, existing-person dropdowns are blank even after people are added later.', batch:'Session 2' },
     { type:'feature', priority:'medium', title:'FAN tab note field hidden on mobile (intentional) — should be accessible somewhere', panel:'fan', status:'open', steps:'Fan context/note field is hidden on mobile via CSS to save space. Need alternate input (expandable row?)', batch:'Session 2' },
     { type:'feature', priority:'low',    title:'Research Hints: no way to dismiss or snooze a hint', panel:'hints', status:'open', steps:'Hints regenerate every time. No way to say "I know, not applicable" for a specific hint.', batch:'Session 2' },
     { type:'data',    priority:'medium', title:'Gist sync: fans and factConfidence arrays not included in serializeForGist()', panel:'sync', status:'fixed', steps:'The new fans[] and factConfidence{} fields may not round-trip through Gist sync if serializeForGist() does not include them.', resolution:'serializeForGist() does JSON.parse(JSON.stringify(DB)) — all fields included automatically.', batch:'Session 2' },
+    // Session 4 — Universal Search + External Sites
+    { type:'feature', priority:'high',   title:'Universal search: ⌘K / magnifier opens spotlight-style overlay', panel:'search', status:'fixed', steps:'Searches people, events, documents, photos, comms, sources, tasks, FAN, dev log. Keyboard nav (↑↓↵ESC). Highlight matches.', resolution:'Implemented — openUniversalSearch(), runUniversalSearch(), usearchKeyNav()', batch:'Session 4' },
+    { type:'feature', priority:'high',   title:'External sites panel: search Ancestry, FamilySearch, FindAGrave etc.', panel:'search', status:'fixed', steps:'22 external sites across 6 groups. Pre-fills name+dates from person record. Opens in new tab.', resolution:'Implemented — toggleExtPanel(), renderExtLinks(), openExtPanelForPerson()', batch:'Session 4' },
+    { type:'bug',     priority:'medium', title:'Universal search: sources and tasks navigate to panel but do not highlight the specific item', panel:'search', status:'open', steps:'Clicking a source/task result navigates to the correct panel but does not scroll to or highlight the specific matching item.', batch:'Session 4' },
+    { type:'ux',      priority:'low',    title:'External sites panel: overlaps content on narrow tablets (768–900px)', panel:'search', status:'open', steps:'The 340px right-side panel overlaps content on tablets. Should either overlay with backdrop or be narrower.', batch:'Session 4' },
+    { type:'feature', priority:'medium', title:'Universal search: filter chips (People only / Documents only / etc.)', panel:'search', status:'open', steps:'Add type-filter tabs or chips below search input to narrow results to one entity type.', batch:'Session 4' },
+    { type:'feature', priority:'low',    title:'External sites: remember last selected person across panel opens', panel:'search', status:'fixed', steps:'ext-person-select resets to blank each time the panel opens. Should remember the last used person.', resolution:'dataset.lastPid stored on select element; restored on next open.', batch:'Session 4' },
   ];
   seed.forEach(s => {
     DB.bugs.push({ id: genId(), ...s, loggedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), resolution: '' });
@@ -5764,6 +6161,627 @@ function refreshPersonSelects() {
     if (opt.value === ccurr) opt.selected = true;
     commFilter.appendChild(opt);
   });
+
+  // External sites panel person select (only if panel exists)
+  const extSel = document.getElementById('ext-person-select');
+  if (extSel) {
+    const ecurr = extSel.value;
+    extSel.innerHTML = '<option value="">— Select a person —</option>';
+    DB.people.sort((a,b)=>fullName(a).localeCompare(fullName(b))).forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = fullName(p) + (p.birthDate ? ` (b. ${p.birthDate.replace(/\D.*(\d{4})/,'$1')})` : '');
+      if (opt.value === ecurr) opt.selected = true;
+      extSel.appendChild(opt);
+    });
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ── UNIVERSAL SEARCH ─────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+let usearchSelectedIdx = -1;
+let usearchCurrentItems = []; // flat list of rendered result items for keyboard nav
+
+function openUniversalSearch() {
+  const bd = document.getElementById('usearch-backdrop');
+  bd.classList.add('open');
+  const inp = document.getElementById('usearch-input');
+  inp.value = '';
+  inp.focus();
+  usearchSelectedIdx = -1;
+  document.getElementById('usearch-results').innerHTML = renderUsearchLanding();
+  document.getElementById('usearch-count').textContent = '';
+}
+
+function closeUniversalSearch(e) {
+  if (e && e.target !== document.getElementById('usearch-backdrop')) return;
+  document.getElementById('usearch-backdrop').classList.remove('open');
+  usearchSelectedIdx = -1;
+  usearchCurrentItems = [];
+}
+
+function renderUsearchLanding() {
+  // Show recent people + quick actions when no query
+  const recent = [...DB.people]
+    .sort((a,b) => new Date(b.addedAt||0) - new Date(a.addedAt||0))
+    .slice(0, 6);
+  const recentHtml = recent.length ? `
+    <p class="usearch-group-label">Recent People</p>
+    ${recent.map((p,i) => usearchPersonItem(p, i)).join('')}` : '';
+
+  const counts = [
+    DB.people.length && `${DB.people.length} people`,
+    DB.events.length && `${DB.events.length} events`,
+    DB.documents.length && `${DB.documents.length} documents`,
+    DB.photos.length && `${DB.photos.length} photos`,
+    DB.communications.length && `${DB.communications.length} entries`,
+    DB.sources.length && `${DB.sources.length} sources`,
+  ].filter(Boolean).join(' · ');
+
+  return `
+    <p class="usearch-group-label" style="padding-top:14px;">Your Archive — ${counts || 'empty'}</p>
+    <div class="usearch-item" onclick="switchPanel('people');closeUniversalSearch({target:document.getElementById('usearch-backdrop')})">
+      <div class="usearch-item-icon"><i class="ti ti-users"></i></div>
+      <div class="usearch-item-main"><div class="usearch-item-title">Browse all people</div></div>
+      <span class="usearch-item-badge">${DB.people.length}</span>
+    </div>
+    <div class="usearch-item" onclick="switchPanel('documents');closeUniversalSearch({target:document.getElementById('usearch-backdrop')})">
+      <div class="usearch-item-icon"><i class="ti ti-files"></i></div>
+      <div class="usearch-item-main"><div class="usearch-item-title">Browse all documents</div></div>
+      <span class="usearch-item-badge">${DB.documents.length}</span>
+    </div>
+    ${recentHtml}`;
+}
+
+function usearchPersonItem(p, idx) {
+  const initHtml = p.photo
+    ? `<img src="${p.photo}">`
+    : `<span style="font-family:var(--font-serif);font-size:13px;">${initials(p)}</span>`;
+  const sub = [p.birthDate && `b. ${p.birthDate}`, p.birthPlace, p.deathDate && `d. ${p.deathDate}`].filter(Boolean).join(' · ') || p.occupation || '';
+  return `<div class="usearch-item" data-action="person:${p.id}">
+    <div class="usearch-item-icon">${initHtml}</div>
+    <div class="usearch-item-main">
+      <div class="usearch-item-title">${fullName(p)}</div>
+      ${sub ? `<div class="usearch-item-sub">${sub}</div>` : ''}
+    </div>
+    <span class="usearch-item-badge">Person</span>
+  </div>`;
+}
+
+function highlight(text, q) {
+  if (!q || !text) return text || '';
+  const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+  return String(text).replace(re, '<mark style="background:rgba(184,134,11,0.25);border-radius:2px;">$1</mark>');
+}
+
+function runUniversalSearch(raw) {
+  const q = raw.trim().toLowerCase();
+  const countEl = document.getElementById('usearch-count');
+  if (!q) {
+    document.getElementById('usearch-results').innerHTML = renderUsearchLanding();
+    countEl.textContent = '';
+    usearchSelectedIdx = -1;
+    return;
+  }
+
+  const results = { people:[], events:[], documents:[], photos:[], comms:[], sources:[], tasks:[], fans:[], bugs:[] };
+
+  // ── People
+  DB.people.forEach(p => {
+    const hay = [fullName(p), p.birthDate, p.birthPlace, p.deathDate, p.deathPlace,
+      p.occupation, p.religion, p.aka, p.bio, p.education, (p.tags||[]).join(' ')].join(' ').toLowerCase();
+    if (hay.includes(q)) results.people.push(p);
+  });
+
+  // ── Events
+  DB.events.forEach(ev => {
+    const hay = [ev.type, ev.date, ev.place, ev.desc, ev.source].join(' ').toLowerCase();
+    if (hay.includes(q)) {
+      const person = DB.people.find(p => p.id === ev.personId);
+      results.events.push({ ...ev, _person: person });
+    }
+  });
+
+  // ── Documents
+  DB.documents.forEach(d => {
+    const formVals = Object.values(d.formFields || {}).join(' ');
+    const hay = [d.title, d.docType, d.date, d.place, d.repository, d.notes, formVals].join(' ').toLowerCase();
+    if (hay.includes(q)) results.documents.push(d);
+  });
+
+  // ── Photos
+  DB.photos.forEach(ph => {
+    const people = (ph.peopleIds||[]).map(id => { const p = DB.people.find(x=>x.id===id); return p?fullName(p):''; }).join(' ');
+    const hay = [ph.caption, ph.date, ph.location, ph.source, ph.notes, people].join(' ').toLowerCase();
+    if (hay.includes(q)) results.photos.push({ ...ph, _people: people });
+  });
+
+  // ── Communications
+  DB.communications.forEach(c => {
+    const hay = [c.subject, c.type, c.date, c.from, c.to, c.content, c.location].join(' ').toLowerCase();
+    if (hay.includes(q)) results.comms.push(c);
+  });
+
+  // ── Sources
+  DB.sources.forEach(s => {
+    const hay = [s.title, s.author, s.publisher, s.url, s.type, s.notes].join(' ').toLowerCase();
+    if (hay.includes(q)) results.sources.push(s);
+  });
+
+  // ── Tasks
+  DB.tasks.forEach(t => {
+    const hay = [t.title, t.desc, t.status, t.priority, t.person].join(' ').toLowerCase();
+    if (hay.includes(q)) results.tasks.push(t);
+  });
+
+  // ── FAN connections
+  (DB.fans||[]).forEach(f => {
+    const p1 = DB.people.find(x=>x.id===f.person1Id);
+    const p2 = DB.people.find(x=>x.id===f.person2Id);
+    const hay = [f.fanType, f.note, p1?fullName(p1):'', p2?fullName(p2):''].join(' ').toLowerCase();
+    if (hay.includes(q)) results.fans.push({ ...f, _p1: p1, _p2: p2 });
+  });
+
+  // ── Dev Log
+  (DB.bugs||[]).forEach(b => {
+    const hay = [b.title, b.type, b.panel, b.steps, b.resolution, b.batch, b.status].join(' ').toLowerCase();
+    if (hay.includes(q)) results.bugs.push(b);
+  });
+
+  // Build result HTML
+  const total = Object.values(results).reduce((n,a)=>n+a.length, 0);
+  countEl.textContent = total ? `${total} result${total>1?'s':''}` : '';
+
+  if (!total) {
+    document.getElementById('usearch-results').innerHTML = `<div class="usearch-empty"><i class="ti ti-search-off" style="font-size:36px;display:block;margin-bottom:8px;"></i>No results for "<strong>${raw}</strong>"</div>`;
+    usearchCurrentItems = [];
+    return;
+  }
+
+  let html = '';
+
+  if (results.people.length) {
+    html += `<p class="usearch-group-label">People (${results.people.length})</p>`;
+    html += results.people.slice(0,8).map(p => {
+      const initHtml = p.photo ? `<img src="${p.photo}">` : `<span style="font-family:var(--font-serif);font-size:13px;">${initials(p)}</span>`;
+      const sub = [p.birthDate&&`b. ${p.birthDate}`, p.birthPlace, p.deathDate&&`d. ${p.deathDate}`].filter(Boolean).join(' · ') || p.occupation || '';
+      return `<div class="usearch-item" data-action="person:${p.id}">
+        <div class="usearch-item-icon">${initHtml}</div>
+        <div class="usearch-item-main">
+          <div class="usearch-item-title">${highlight(fullName(p),raw)}</div>
+          ${sub?`<div class="usearch-item-sub">${highlight(sub,raw)}</div>`:''}
+        </div>
+        <span class="usearch-item-badge">Person</span>
+      </div>`;
+    }).join('');
+  }
+
+  if (results.events.length) {
+    html += `<p class="usearch-group-label">Events (${results.events.length})</p>`;
+    html += results.events.slice(0,6).map(ev => `<div class="usearch-item" data-action="person:${ev.personId}">
+      <div class="usearch-item-icon"><i class="ti ti-calendar-event"></i></div>
+      <div class="usearch-item-main">
+        <div class="usearch-item-title">${highlight(ev.type,raw)} — ${highlight(ev.date||'',raw)}</div>
+        <div class="usearch-item-sub">${ev._person?fullName(ev._person):'Unknown'} · ${highlight(ev.place||'',raw)}</div>
+      </div>
+      <span class="usearch-item-badge">Event</span>
+    </div>`).join('');
+  }
+
+  if (results.documents.length) {
+    html += `<p class="usearch-group-label">Documents (${results.documents.length})</p>`;
+    html += results.documents.slice(0,6).map(d => `<div class="usearch-item" data-action="doc:${d.id}">
+      <div class="usearch-item-icon"><i class="ti ti-file-text"></i></div>
+      <div class="usearch-item-main">
+        <div class="usearch-item-title">${highlight(d.title||'Untitled',raw)}</div>
+        <div class="usearch-item-sub">${d.docType||''} · ${highlight(d.date||'',raw)} · ${highlight(d.place||'',raw)}</div>
+      </div>
+      <span class="usearch-item-badge">Document</span>
+    </div>`).join('');
+  }
+
+  if (results.photos.length) {
+    html += `<p class="usearch-group-label">Photos (${results.photos.length})</p>`;
+    html += results.photos.slice(0,4).map(ph => `<div class="usearch-item" data-action="photo:${ph.id}">
+      <div class="usearch-item-icon">${ph.dataUrl?`<img src="${ph.dataUrl}">`:'<i class="ti ti-photo"></i>'}</div>
+      <div class="usearch-item-main">
+        <div class="usearch-item-title">${highlight(ph.caption||'Untitled photo',raw)}</div>
+        <div class="usearch-item-sub">${highlight(ph.date||'',raw)} · ${highlight(ph._people||'',raw)}</div>
+      </div>
+      <span class="usearch-item-badge">Photo</span>
+    </div>`).join('');
+  }
+
+  if (results.comms.length) {
+    html += `<p class="usearch-group-label">Correspondence (${results.comms.length})</p>`;
+    html += results.comms.slice(0,4).map(c => `<div class="usearch-item" data-action="comm:${c.id}">
+      <div class="usearch-item-icon"><i class="ti ti-mail"></i></div>
+      <div class="usearch-item-main">
+        <div class="usearch-item-title">${highlight(c.subject||c.type,raw)}</div>
+        <div class="usearch-item-sub">${highlight(c.date||'',raw)} · ${highlight(c.from||'',raw)}${c.to?' → '+c.to:''}</div>
+      </div>
+      <span class="usearch-item-badge">Correspondence</span>
+    </div>`).join('');
+  }
+
+  if (results.sources.length) {
+    html += `<p class="usearch-group-label">Sources (${results.sources.length})</p>`;
+    html += results.sources.slice(0,4).map(s => `<div class="usearch-item" data-action="source:${s.id}">
+      <div class="usearch-item-icon"><i class="ti ti-book"></i></div>
+      <div class="usearch-item-main">
+        <div class="usearch-item-title">${highlight(s.title||'Untitled',raw)}</div>
+        <div class="usearch-item-sub">${highlight(s.author||'',raw)} · ${s.type||''}</div>
+      </div>
+      <span class="usearch-item-badge">Source</span>
+    </div>`).join('');
+  }
+
+  if (results.tasks.length) {
+    html += `<p class="usearch-group-label">Research Tasks (${results.tasks.length})</p>`;
+    html += results.tasks.slice(0,3).map(t => `<div class="usearch-item" data-action="panel:research">
+      <div class="usearch-item-icon"><i class="ti ti-clipboard-list"></i></div>
+      <div class="usearch-item-main">
+        <div class="usearch-item-title">${highlight(t.title,raw)}</div>
+        <div class="usearch-item-sub">${t.status} · ${t.priority} priority</div>
+      </div>
+      <span class="usearch-item-badge">Task</span>
+    </div>`).join('');
+  }
+
+  if (results.fans.length) {
+    html += `<p class="usearch-group-label">FAN Connections (${results.fans.length})</p>`;
+    html += results.fans.slice(0,4).map(f => `<div class="usearch-item" data-action="person:${f.person1Id}">
+      <div class="usearch-item-icon"><i class="ti ti-network"></i></div>
+      <div class="usearch-item-main">
+        <div class="usearch-item-title">${f._p1?fullName(f._p1):'?'} ↔ ${f._p2?fullName(f._p2):'?'}</div>
+        <div class="usearch-item-sub">${highlight(f.fanType||'Associate',raw)} · ${highlight(f.note||'',raw)}</div>
+      </div>
+      <span class="usearch-item-badge">FAN</span>
+    </div>`).join('');
+  }
+
+  if (results.bugs.length) {
+    html += `<p class="usearch-group-label">Dev Log (${results.bugs.length})</p>`;
+    html += results.bugs.slice(0,3).map(b => `<div class="usearch-item" data-action="panel:bugs">
+      <div class="usearch-item-icon"><i class="ti ti-bug"></i></div>
+      <div class="usearch-item-main">
+        <div class="usearch-item-title">${highlight(b.title,raw)}</div>
+        <div class="usearch-item-sub">${b.type} · ${b.status} · ${b.panel||'general'}</div>
+      </div>
+      <span class="usearch-item-badge">Dev Log</span>
+    </div>`).join('');
+  }
+
+  document.getElementById('usearch-results').innerHTML = html;
+
+  // Wire click handlers
+  usearchCurrentItems = Array.from(document.querySelectorAll('#usearch-results .usearch-item'));
+  usearchCurrentItems.forEach(el => {
+    el.addEventListener('click', () => usearchNavigate(el.dataset.action));
+  });
+  usearchSelectedIdx = -1;
+}
+
+function usearchNavigate(action) {
+  if (!action) return;
+  document.getElementById('usearch-backdrop').classList.remove('open');
+  const [type, id] = action.split(':');
+  if (type === 'person')  { setTimeout(() => openPersonDetail(id), 80); }
+  if (type === 'doc')     { setTimeout(() => viewDoc(id), 80); }
+  if (type === 'photo')   { setTimeout(() => viewPhoto(id), 80); }
+  if (type === 'comm')    { setTimeout(() => viewComm(id), 80); }
+  if (type === 'source')  { setTimeout(() => switchPanel('sources'), 80); }
+  if (type === 'panel')   { setTimeout(() => switchPanel(id), 80); }
+}
+
+function usearchKeyNav(e) {
+  const items = usearchCurrentItems;
+  if (!items.length) return;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    usearchSelectedIdx = Math.min(usearchSelectedIdx + 1, items.length - 1);
+    items.forEach((el,i) => el.classList.toggle('selected', i === usearchSelectedIdx));
+    items[usearchSelectedIdx]?.scrollIntoView({ block:'nearest' });
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    usearchSelectedIdx = Math.max(usearchSelectedIdx - 1, 0);
+    items.forEach((el,i) => el.classList.toggle('selected', i === usearchSelectedIdx));
+    items[usearchSelectedIdx]?.scrollIntoView({ block:'nearest' });
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    const sel = items[usearchSelectedIdx];
+    if (sel) usearchNavigate(sel.dataset.action);
+    else if (items.length === 1) usearchNavigate(items[0].dataset.action);
+  } else if (e.key === 'Escape') {
+    document.getElementById('usearch-backdrop').classList.remove('open');
+  }
+}
+
+// ⌘K / Ctrl+K global shortcut
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); openUniversalSearch(); }
+  if (e.key === 'Escape') { document.getElementById('usearch-backdrop')?.classList.remove('open'); }
+});
+
+// Click outside search input to close
+document.getElementById('usearch-backdrop')?.addEventListener('mousedown', e => {
+  if (e.target === document.getElementById('usearch-backdrop')) closeUniversalSearch(e);
+});
+
+
+// ══════════════════════════════════════════════════════════════════
+// ── EXTERNAL SITES PANEL ─────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+const EXT_SITES = [
+  {
+    group: 'Major Databases',
+    sites: [
+      {
+        id: 'ancestry', name: 'Ancestry.com', abbr: 'AN',
+        color: '#1b5e20', textColor: '#fff',
+        desc: 'Largest genealogy database — records, trees, DNA',
+        url: (p,by,dy,fn,ln) => `https://www.ancestry.com/search/?name=${fn}_${ln}&birth=${by}&death=${dy}&count=50`,
+        hint: 'Census, vital records, immigration, military',
+      },
+      {
+        id: 'familysearch', name: 'FamilySearch', abbr: 'FS',
+        color: '#0d47a1', textColor: '#fff',
+        desc: 'Free LDS-run global genealogy database',
+        url: (p,by,dy,fn,ln) => `https://www.familysearch.org/search/record/results?q.givenName=${fn}&q.surname=${ln}&q.birthLikeDate.from=${by?by-2:''}&q.birthLikeDate.to=${by?by+2:''}&q.deathLikeDate.from=${dy?dy-2:''}&q.deathLikeDate.to=${dy?dy+2:''}`,
+        hint: 'Free access to millions of digitized records',
+      },
+      {
+        id: 'myheritage', name: 'MyHeritage', abbr: 'MH',
+        color: '#1565c0', textColor: '#fff',
+        desc: 'International records and family tree platform',
+        url: (p,by,dy,fn,ln) => `https://www.myheritage.com/research/collection-1/myheritage-all?formId=master&formMode=1&s=243385351&action=query&qName.first=${fn}&qName.last=${ln}&qBirth.year=${by||''}`,
+        hint: 'European records, photo colorization, DNA',
+      },
+      {
+        id: 'findmypast', name: 'FindMyPast', abbr: 'FP',
+        color: '#4a148c', textColor: '#fff',
+        desc: 'Strong UK, Ireland, and Australia records',
+        url: (p,by,dy,fn,ln) => `https://www.findmypast.com/search/results?firstname=${fn}&lastname=${ln}&yearofbirth=${by||''}&yearofbirth_offset=2`,
+        hint: 'British census, parish records, emigration',
+      },
+      {
+        id: 'wikitree', name: 'WikiTree', abbr: 'WT',
+        color: '#2e7d32', textColor: '#fff',
+        desc: 'Collaborative free family tree',
+        url: (p,by,dy,fn,ln) => `https://www.wikitree.com/index.php?title=Special:SearchPerson&FirstName=${fn}&LastName=${ln}&BirthYear=${by||''}&action=SpSearch`,
+        hint: 'Open collaborative tree, free forever',
+      },
+    ]
+  },
+  {
+    group: 'Newspapers & Media',
+    sites: [
+      {
+        id: 'newspapers', name: 'Newspapers.com', abbr: 'NP',
+        color: '#bf360c', textColor: '#fff',
+        desc: 'Billions of historical newspaper pages',
+        url: (p,by,dy,fn,ln) => `https://www.newspapers.com/search/#query=${fn}+${ln}&dr_year=${by||''}-${dy||''}`,
+        hint: 'Obituaries, birth announcements, news mentions',
+      },
+      {
+        id: 'chroniclingamerica', name: 'Chronicling America', abbr: 'CA',
+        color: '#4e342e', textColor: '#fff',
+        desc: 'Free Library of Congress newspaper archive',
+        url: (p,by,dy,fn,ln) => `https://chroniclingamerica.loc.gov/search/pages/results/?andtext=${fn}+${ln}&dateFilterType=yearRange&date1=${by||1770}&date2=${dy||1963}`,
+        hint: 'Free · US papers 1770–1963',
+      },
+      {
+        id: 'genealogybank', name: 'GenealogyBank', abbr: 'GB',
+        color: '#e65100', textColor: '#fff',
+        desc: 'Historical newspapers and obituaries',
+        url: (p,by,dy,fn,ln) => `https://www.genealogybank.com/explore/newspapers/all/usa?fname=${fn}&lname=${ln}`,
+        hint: 'Obituaries, Social Security death records',
+      },
+    ]
+  },
+  {
+    group: 'Cemeteries & Memorials',
+    sites: [
+      {
+        id: 'findagrave', name: 'Find A Grave', abbr: 'FG',
+        color: '#37474f', textColor: '#fff',
+        desc: 'Cemetery records, grave photos, memorials',
+        url: (p,by,dy,fn,ln) => `https://www.findagrave.com/memorial/search?firstname=${fn}&lastname=${ln}&birthyear=${by||''}&birthyearend=${by?by+2:''}&deathyear=${dy||''}&deathyearend=${dy?dy+2:''}`,
+        hint: 'Headstone photos, transcriptions, memorials',
+      },
+      {
+        id: 'billiongraves', name: 'BillionGraves', abbr: 'BG',
+        color: '#455a64', textColor: '#fff',
+        desc: 'GPS-tagged grave records and headstone photos',
+        url: (p,by,dy,fn,ln) => `https://billiongraves.com/search/results/?firstname=${fn}&lastname=${ln}&birth_year=${by||''}&death_year=${dy||''}`,
+        hint: 'GPS coordinates for every grave',
+      },
+    ]
+  },
+  {
+    group: 'Military & Government',
+    sites: [
+      {
+        id: 'fold3', name: 'Fold3', abbr: 'F3',
+        color: '#1a237e', textColor: '#fff',
+        desc: 'US military records, pension files, draft cards',
+        url: (p,by,dy,fn,ln) => `https://www.fold3.com/search/#query=${fn}+${ln}&record-type=military`,
+        hint: 'WWI/WWII draft cards, pension, discharge',
+      },
+      {
+        id: 'archives', name: 'National Archives', abbr: 'NA',
+        color: '#880e4f', textColor: '#fff',
+        desc: 'US federal records, NARA catalog',
+        url: (p,by,dy,fn,ln) => `https://catalog.archives.gov/search?q=${fn}+${ln}&f.level=item`,
+        hint: 'Naturalization, land, pension, WWII records',
+      },
+      {
+        id: 'ssdi', name: 'SSDI (Free)', abbr: 'SS',
+        color: '#004d40', textColor: '#fff',
+        desc: 'Social Security Death Index — free search',
+        url: (p,by,dy,fn,ln) => `https://www.familysearch.org/search/record/results?q.givenName=${fn}&q.surname=${ln}&q.deathLikeDate.from=${dy?dy-1:''}&q.deathLikeDate.to=${dy?dy+1:''}&collection_id=1202535`,
+        hint: 'Death dates 1936–present for US residents',
+      },
+    ]
+  },
+  {
+    group: 'International & Specialized',
+    sites: [
+      {
+        id: 'jewishgen', name: 'JewishGen', abbr: 'JG',
+        color: '#1a237e', textColor: '#fff',
+        desc: 'Jewish genealogy databases worldwide',
+        url: (p,by,dy,fn,ln) => `https://www.jewishgen.org/databases/GivenName/search.php?SurName=${ln}&GivName=${fn}`,
+        hint: 'Yizkor books, Holocaust records, landsmanshaftn',
+      },
+      {
+        id: 'irishgenealogy', name: 'IrishGenealogy.ie', abbr: 'IG',
+        color: '#1b5e20', textColor: '#fff',
+        desc: 'Irish civil and church records — free',
+        url: (p,by,dy,fn,ln) => `https://www.irishgenealogy.ie/en/civil-records/search.html?Forename=${fn}&Surname=${ln}&YearFrom=${by?by-2:''}&YearTo=${by?by+2:''}`,
+        hint: 'Births, marriages, deaths from 1864',
+      },
+      {
+        id: 'thegenealogist', name: 'TheGenealogist', abbr: 'TG',
+        color: '#4a148c', textColor: '#fff',
+        desc: 'UK census, BMD, and tithe records',
+        url: (p,by,dy,fn,ln) => `https://www.thegenealogist.co.uk/search/?firstname=${fn}&lastname=${ln}&yearofbirth=${by||''}`,
+        hint: 'England & Wales specialist records',
+      },
+    ]
+  },
+  {
+    group: 'DNA & Genetics',
+    sites: [
+      {
+        id: 'gedmatch', name: 'GEDmatch', abbr: 'GM',
+        color: '#00695c', textColor: '#fff',
+        desc: 'Upload raw DNA to match across companies',
+        url: () => 'https://www.gedmatch.com',
+        hint: 'Crosses AncestryDNA, 23andMe, FTDNA kits',
+      },
+      {
+        id: 'dnasolved', name: 'DNA Painter', abbr: 'DP',
+        color: '#ad1457', textColor: '#fff',
+        desc: 'Map DNA matches to your family tree',
+        url: () => 'https://dnapainter.com',
+        hint: 'Chromosome mapping, WATO, centiMorgan tool',
+      },
+    ]
+  },
+];
+
+let extPanelOpen = false;
+
+function toggleExtPanel() {
+  extPanelOpen = !extPanelOpen;
+  const panel = document.getElementById('ext-panel');
+  panel.classList.toggle('open', extPanelOpen);
+  if (extPanelOpen) {
+    const sel = document.getElementById('ext-person-select');
+    const remembered = sel.dataset.lastPid || sel.value || '';
+    sel.innerHTML = '<option value="">— Select a person —</option>';
+    [...DB.people].sort((a,b)=>fullName(a).localeCompare(fullName(b))).forEach(p => {
+      const o = document.createElement('option');
+      o.value = p.id;
+      o.textContent = fullName(p) + (p.birthDate ? ` (b. ${p.birthDate.replace(/\D.*(\d{4})/,'$1')})` : '');
+      if (p.id === remembered) o.selected = true;
+      sel.appendChild(o);
+    });
+    renderExtLinks();
+  }
+}
+
+// Open external panel pre-loaded for a specific person
+function openExtPanelForPerson(personId) {
+  extPanelOpen = true;
+  document.getElementById('ext-panel').classList.add('open');
+  const sel = document.getElementById('ext-person-select');
+  // rebuild options then set value
+  sel.innerHTML = '<option value="">— Select a person —</option>';
+  [...DB.people].sort((a,b)=>fullName(a).localeCompare(fullName(b))).forEach(p => {
+    const o = document.createElement('option');
+    o.value = p.id;
+    o.textContent = fullName(p) + (p.birthDate ? ` (b. ${p.birthDate.replace(/\D.*(\d{4})/,'$1')})` : '');
+    if (p.id === personId) o.selected = true;
+    sel.appendChild(o);
+  });
+  sel.dataset.lastPid = personId;
+  renderExtLinks();
+}
+
+function extractYear(dateStr) {
+  if (!dateStr) return '';
+  const m = String(dateStr).match(/\d{4}/);
+  return m ? m[0] : '';
+}
+
+function renderExtLinks() {
+  const pid = document.getElementById('ext-person-select').value;
+  const container = document.getElementById('ext-links-container');
+
+  if (!pid) {
+    container.innerHTML = '<div style="font-size:13px;color:var(--ink3);text-align:center;padding:24px 0;">Select a person above to see search links.</div>';
+    return;
+  }
+
+  const p  = DB.people.find(x => x.id === pid);
+  if (!p) { container.innerHTML = ''; return; }
+
+  const fn = encodeURIComponent(p.firstName || '');
+  const ln = encodeURIComponent(p.lastName  || '');
+  const by = extractYear(p.birthDate);
+  const dy = extractYear(p.deathDate);
+  const fnRaw = p.firstName || '';
+  const lnRaw = p.lastName  || '';
+
+  // Person summary card
+  const summary = [
+    p.birthDate  && `b. ${p.birthDate}`,
+    p.birthPlace && p.birthPlace,
+    p.deathDate  && `d. ${p.deathDate}`,
+    p.deathPlace && p.deathPlace,
+  ].filter(Boolean).join(' · ');
+
+  let html = `<div class="ext-person-card">
+    <div style="font-weight:600;font-size:14px;margin-bottom:4px;">${fullName(p)}</div>
+    ${summary ? `<div style="font-size:12px;color:var(--ink3);">${summary}</div>` : ''}
+    <div style="font-size:11px;color:var(--ink3);margin-top:6px;">Search links are pre-filled with this person's name and dates.</div>
+  </div>`;
+
+  // Also add a "Search in archive" quick link
+  html += `<div class="usearch-item" style="background:rgba(184,134,11,0.06);border:1px solid rgba(184,134,11,0.2);border-radius:var(--radius);margin-bottom:10px;" onclick="document.getElementById('ext-panel').classList.remove('open');extPanelOpen=false;openPersonDetail('${pid}')">
+    <div class="usearch-item-icon"><i class="ti ti-user"></i></div>
+    <div class="usearch-item-main"><div class="usearch-item-title">Open in FamilyArchive</div><div class="usearch-item-sub">View full profile, documents, hints</div></div>
+    <span class="usearch-item-badge" style="color:var(--gold);">Local</span>
+  </div>`;
+
+  EXT_SITES.forEach(group => {
+    html += `<div class="ext-section-label">${group.group}</div>`;
+    group.sites.forEach(site => {
+      let href;
+      try { href = site.url(p, by ? parseInt(by) : null, dy ? parseInt(dy) : null, fn, ln); }
+      catch(e) { href = '#'; }
+      html += `<div class="ext-site-row">
+        <div class="ext-site-logo" style="background:${site.color};color:${site.textColor};">${site.abbr}</div>
+        <div class="ext-site-info">
+          <div class="ext-site-name">${site.name}</div>
+          <div class="ext-site-desc">${site.hint}</div>
+        </div>
+        <a href="${href}" target="_blank" rel="noopener noreferrer" class="ext-search-btn">
+          <i class="ti ti-external-link" style="font-size:11px;"></i> Search
+        </a>
+      </div>`;
+    });
+  });
+
+  container.innerHTML = html;
+}
+
+// Wire "Search External Sites" button in person detail hints
+function openExtForHint(personId) {
+  openExtPanelForPerson(personId);
 }
 
 // ── INIT ──────────────────────────────────────────────────────────
@@ -5937,12 +6955,14 @@ function generateReport(type) {
 
   else if (type === 'biography') {
     const sorted = [...DB.people].sort((a,b) => fullName(a).localeCompare(fullName(b)));
-    const options = sorted.map(p => `${fullName(p)}${p.birthDate ? ' (b. ' + p.birthDate + ')' : ''}`);
-    const chosen = prompt('Choose a person for the biography:\n\n' + options.map((o,i) => `${i+1}. ${o}`).join('\n') + '\n\nEnter a number:');
-    if (!chosen) return;
-    const idx = parseInt(chosen) - 1;
-    if (isNaN(idx) || idx < 0 || idx >= sorted.length) { alert('Invalid selection.'); return; }
-    const person = sorted[idx];
+    if (!sorted.length) { alert('No people in your archive yet.'); return; }
+    openReportPicker({
+      title: 'Biography — Select Person',
+      label: 'Choose a person:',
+      options: sorted.map(p => ({ label: fullName(p) + (p.birthDate ? ` (b. ${p.birthDate})` : ''), value: p.id })),
+      onConfirm: (pid) => {
+        const person = sorted.find(p => p.id === pid);
+        if (!person) return;
     const personEvents = DB.events.filter(e=>e.personId===person.id).sort((a,b)=>(parseInt(a.date?.split(' ').pop())||0)-(parseInt(b.date?.split(' ').pop())||0));
     const personDocs = DB.documents.filter(d=>(d.peopleIds||[]).includes(person.id));
     const rels = DB.relationships.filter(r=>r.person1Id===person.id||r.person2Id===person.id);
@@ -5965,6 +6985,10 @@ function generateReport(type) {
       ${personDocs.length?`<h2>Associated Documents (${personDocs.length})</h2><table><thead><tr><th>Title</th><th>Type</th><th>Date</th><th>Repository</th></tr></thead><tbody>${personDocs.map(d=>`<tr><td>${d.title}</td><td>${d.docType}</td><td>${d.date||'—'}</td><td>${d.repository||'—'}</td></tr>`).join('')}</tbody></table>`:''}
       <div class="footer"><span>${fullName(person)}</span><span>Biography</span><span>${today}</span></div>
       </body></html>`;
+        const win = window.open('','_blank'); win.document.write(html); win.document.close();
+      }
+    });
+    return;
   }
 
   else if (type === 'timeline-report') {
@@ -6014,24 +7038,8 @@ function generateReport(type) {
 
   else if (type === 'family-group') {
     const couples = DB.relationships.filter(r=>r.type==='spouse');
-    if (!couples.length) {
-      generateReport('pedigree'); return;
-    }
-    let couple;
-    if (couples.length === 1) {
-      couple = couples[0];
-    } else {
-      const options = couples.map((c, i) => {
-        const p1 = DB.people.find(x=>x.id===c.person1Id);
-        const p2 = DB.people.find(x=>x.id===c.person2Id);
-        return `${i+1}. ${p1?fullName(p1):'Unknown'} & ${p2?fullName(p2):'Unknown'}${c.marriageDate?' (m. '+c.marriageDate+')':''}`;
-      });
-      const chosen = prompt('Choose a couple for the Family Group Sheet:\n\n' + options.join('\n') + '\n\nEnter a number:');
-      if (!chosen) return;
-      const idx = parseInt(chosen) - 1;
-      if (isNaN(idx) || idx < 0 || idx >= couples.length) { alert('Invalid selection.'); return; }
-      couple = couples[idx];
-    }
+    if (!couples.length) { generateReport('pedigree'); return; }
+    const doFamilyGroup = (couple) => {
     const p1 = DB.people.find(x=>x.id===couple.person1Id);
     const p2 = DB.people.find(x=>x.id===couple.person2Id);
     const children = DB.relationships.filter(r=>r.type==='parent'&&(r.person1Id===couple.person1Id||r.person1Id===couple.person2Id)).map(r=>DB.people.find(x=>x.id===r.person2Id)).filter(Boolean);
@@ -6053,12 +7061,221 @@ function generateReport(type) {
       ${couple.marriageDate?`<h2>Marriage</h2><div class="field-row"><span class="field-label">Date:</span><span>${couple.marriageDate}</span></div>${couple.marriagePlace?`<div class="field-row"><span class="field-label">Place:</span><span>${couple.marriagePlace}</span></div>`:''}`:''}
       ${children.length?`<h2>Children (${children.length})</h2><table><thead><tr><th>#</th><th>Name</th><th>Born</th><th>Birthplace</th><th>Died</th></tr></thead><tbody>${children.map((c,i)=>`<tr><td>${i+1}</td><td>${fullName(c)}</td><td>${c.birthDate||'—'}</td><td>${c.birthPlace||'—'}</td><td>${c.deathDate||'—'}</td></tr>`).join('')}</tbody></table>`:'<p>No children recorded.</p>'}
       <div class="footer"><span>${archiveName}</span><span>Family Group Sheet</span><span>${today}</span></div></body></html>`;
+      const win = window.open('','_blank'); win.document.write(html); win.document.close();
+    }; // end doFamilyGroup
+
+    if (couples.length === 1) {
+      doFamilyGroup(couples[0]);
+    } else {
+      openReportPicker({
+        title: 'Family Group Sheet — Select Couple',
+        label: 'Choose a couple:',
+        options: couples.map(r => {
+          const p1 = DB.people.find(x=>x.id===r.person1Id);
+          const p2 = DB.people.find(x=>x.id===r.person2Id);
+          return { label: `${p1?fullName(p1):'Unknown'} & ${p2?fullName(p2):'Unknown'}${r.marriageDate?' (m. '+r.marriageDate+')':''}`, value: r.id };
+        }),
+        onConfirm: (rid) => {
+          const couple = couples.find(r=>r.id===rid);
+          if (couple) doFamilyGroup(couple);
+        }
+      });
+    }
+    return;
   }
 
   if (!html) return;
   const win = window.open('', '_blank');
   win.document.write(html);
   win.document.close();
+}
+
+// ── REPORT PICKER MODAL ──────────────────────────────────────────
+let _reportPickerCallback = null;
+
+function openReportPicker({ title, label, options, onConfirm }) {
+  _reportPickerCallback = onConfirm;
+  document.getElementById('rpicker-title').textContent = title;
+  document.getElementById('rpicker-label').textContent = label;
+  const sel = document.getElementById('rpicker-select');
+  sel.innerHTML = options.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
+  sel.selectedIndex = 0;
+  openModal('report-picker-modal');
+}
+
+function reportPickerConfirm() {
+  const val = document.getElementById('rpicker-select').value;
+  closeModal('report-picker-modal');
+  if (_reportPickerCallback && val) _reportPickerCallback(val);
+  _reportPickerCallback = null;
+}
+
+// ── EDIT EVENT ───────────────────────────────────────────────────
+function editEvent(id) {
+  const ev = DB.events.find(e => e.id === id);
+  if (!ev) return;
+  document.getElementById('eed-type').value       = ev.type       || 'other';
+  document.getElementById('eed-date').value       = ev.date       || '';
+  document.getElementById('eed-place').value      = ev.place      || '';
+  document.getElementById('eed-desc').value       = ev.desc       || '';
+  document.getElementById('eed-source').value     = ev.source     || '';
+  document.getElementById('eed-confidence').value = ev.confidence || 'certain';
+  document.getElementById('eed-save-btn').dataset.editId = id;
+  openModal('edit-event-modal');
+}
+
+function saveEditEvent() {
+  const id = document.getElementById('eed-save-btn').dataset.editId;
+  const ev = DB.events.find(e => e.id === id);
+  if (!ev) return;
+  ev.type       = document.getElementById('eed-type').value;
+  ev.date       = document.getElementById('eed-date').value.trim();
+  ev.place      = document.getElementById('eed-place').value.trim();
+  ev.desc       = document.getElementById('eed-desc').value.trim();
+  ev.source     = document.getElementById('eed-source').value.trim();
+  ev.confidence = document.getElementById('eed-confidence').value;
+  save();
+  closeModal('edit-event-modal');
+  if (currentPersonId) openPersonDetail(currentPersonId);
+}
+
+function deleteEvent(id) {
+  if (!confirm('Delete this event? This cannot be undone.')) return;
+  DB.events = DB.events.filter(e => e.id !== id);
+  save();
+  if (currentPersonId) openPersonDetail(currentPersonId);
+}
+
+// ── EDIT SOURCE ──────────────────────────────────────────────────
+function editSource(id) {
+  const s = DB.sources.find(x => x.id === id);
+  if (!s) return;
+  document.getElementById('esd-type').value      = s.type      || 'other';
+  document.getElementById('esd-date').value      = s.date      || '';
+  document.getElementById('esd-title').value     = s.title     || '';
+  document.getElementById('esd-author').value    = s.author    || '';
+  document.getElementById('esd-publisher').value = s.publisher || '';
+  document.getElementById('esd-url').value       = s.url       || '';
+  document.getElementById('esd-citation').value  = s.citation  || '';
+  document.getElementById('esd-notes').value     = s.notes     || '';
+  document.getElementById('esd-save-btn').dataset.editId = id;
+  openModal('edit-source-modal');
+}
+
+function saveEditSource() {
+  const id = document.getElementById('esd-save-btn').dataset.editId;
+  const s = DB.sources.find(x => x.id === id);
+  if (!s) return;
+  s.type      = document.getElementById('esd-type').value;
+  s.date      = document.getElementById('esd-date').value.trim();
+  s.title     = document.getElementById('esd-title').value.trim();
+  s.author    = document.getElementById('esd-author').value.trim();
+  s.publisher = document.getElementById('esd-publisher').value.trim();
+  s.url       = document.getElementById('esd-url').value.trim();
+  s.citation  = document.getElementById('esd-citation').value.trim();
+  s.notes     = document.getElementById('esd-notes').value.trim();
+  save();
+  closeModal('edit-source-modal');
+  renderSources();
+}
+
+// ── EDIT TASK ────────────────────────────────────────────────────
+function editTask(id) {
+  const t = DB.tasks.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('etd-title').value    = t.title    || '';
+  document.getElementById('etd-status').value   = t.status   || 'not-started';
+  document.getElementById('etd-priority').value = t.priority || 'medium';
+  document.getElementById('etd-goal').value     = t.goal     || '';
+  document.getElementById('etd-sources').value  = t.sources  || '';
+  document.getElementById('etd-notes').value    = t.notes    || '';
+  document.getElementById('etd-save-btn').dataset.editId = id;
+  openModal('edit-task-modal');
+}
+
+function saveEditTask() {
+  const id = document.getElementById('etd-save-btn').dataset.editId;
+  const t = DB.tasks.find(x => x.id === id);
+  if (!t) return;
+  const title = document.getElementById('etd-title').value.trim();
+  if (!title) { alert('Please enter a title.'); return; }
+  t.title    = title;
+  t.status   = document.getElementById('etd-status').value;
+  t.priority = document.getElementById('etd-priority').value;
+  t.goal     = document.getElementById('etd-goal').value.trim();
+  t.sources  = document.getElementById('etd-sources').value.trim();
+  t.notes    = document.getElementById('etd-notes').value.trim();
+  save();
+  closeModal('edit-task-modal');
+  renderResearch();
+}
+
+function deleteTask(id) {
+  if (!confirm('Delete this task? This cannot be undone.')) return;
+  DB.tasks = DB.tasks.filter(t => t.id !== id);
+  save(); renderResearch();
+}
+
+// ── EDIT PHOTO ───────────────────────────────────────────────────
+function editPhoto(id) {
+  const ph = DB.photos.find(x => x.id === id);
+  if (!ph) return;
+  // Preview
+  const prev = document.getElementById('eph-preview');
+  prev.innerHTML = ph.dataUrl
+    ? `<img src="${ph.dataUrl}" style="max-height:140px;max-width:100%;border-radius:var(--radius);border:1px solid var(--border);">`
+    : `<div style="height:80px;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:32px;"><i class="ti ti-photo"></i></div>`;
+  document.getElementById('eph-caption').value  = ph.caption  || '';
+  document.getElementById('eph-type').value     = ph.type     || 'portrait';
+  document.getElementById('eph-date').value     = ph.date     || '';
+  document.getElementById('eph-location').value = ph.location || '';
+  document.getElementById('eph-source').value   = ph.source   || '';
+  document.getElementById('eph-notes').value    = ph.notes    || '';
+  // People multi-select
+  populateModalSelects('edit-photo-modal');
+  setTimeout(() => {
+    const sel = document.getElementById('eph-people');
+    if (sel) Array.from(sel.options).forEach(o => { o.selected = (ph.peopleIds||[]).includes(o.value); });
+  }, 60);
+  document.getElementById('eph-save-btn').dataset.editId = id;
+  openModal('edit-photo-modal');
+}
+
+function saveEditPhoto() {
+  const id = document.getElementById('eph-save-btn').dataset.editId;
+  const ph = DB.photos.find(x => x.id === id);
+  if (!ph) return;
+  ph.caption  = document.getElementById('eph-caption').value.trim();
+  ph.type     = document.getElementById('eph-type').value;
+  ph.date     = document.getElementById('eph-date').value.trim();
+  ph.location = document.getElementById('eph-location').value.trim();
+  ph.source   = document.getElementById('eph-source').value.trim();
+  ph.notes    = document.getElementById('eph-notes').value.trim();
+  ph.peopleIds = Array.from(document.getElementById('eph-people').selectedOptions).map(o=>o.value);
+  save();
+  closeModal('edit-photo-modal');
+  renderGallery();
+  // Reopen photo viewer with updated data
+  viewPhoto(id);
+}
+
+// ── DISMISS HINTS ────────────────────────────────────────────────
+function dismissHint(personId, hintKey) {
+  const storageKey = 'fap_dismissed_hints';
+  let dismissed = {};
+  try { dismissed = JSON.parse(localStorage.getItem(storageKey)||'{}'); } catch(e) {}
+  if (!dismissed[personId]) dismissed[personId] = [];
+  if (!dismissed[personId].includes(hintKey)) dismissed[personId].push(hintKey);
+  localStorage.setItem(storageKey, JSON.stringify(dismissed));
+  // Re-render hints section inline
+  openPersonDetail(personId);
+}
+
+function getDismissedHints(personId) {
+  try {
+    const dismissed = JSON.parse(localStorage.getItem('fap_dismissed_hints')||'{}');
+    return dismissed[personId] || [];
+  } catch(e) { return []; }
 }
 
 function exportCSV() {
@@ -6303,5 +7520,46 @@ document.getElementById('rel-type')?.addEventListener('change', function() {
 });
 
 </script>
+
+<!-- ── UNIVERSAL SEARCH OVERLAY ── -->
+<div id="usearch-backdrop" onclick="closeUniversalSearch(event)">
+  <div id="usearch-box" onclick="event.stopPropagation()">
+    <div id="usearch-input-wrap">
+      <i class="ti ti-search"></i>
+      <input id="usearch-input" type="text" placeholder="Search people, documents, events, places…"
+        oninput="runUniversalSearch(this.value)"
+        onkeydown="usearchKeyNav(event)" autocomplete="off" spellcheck="false">
+      <span id="usearch-kbd">ESC to close</span>
+    </div>
+    <div id="usearch-results"></div>
+    <div id="usearch-footer">
+      <span><kbd>↑↓</kbd> navigate</span>
+      <span><kbd>↵</kbd> open</span>
+      <span><kbd>ESC</kbd> close</span>
+      <span style="margin-left:auto;" id="usearch-count"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ── EXTERNAL SITES PANEL ── -->
+<div id="ext-panel">
+  <div id="ext-panel-header">
+    <i class="ti ti-world-search" style="color:var(--gold);font-size:18px;"></i>
+    <div id="ext-panel-title">Search External Sites</div>
+    <button onclick="toggleExtPanel()" style="background:none;border:none;cursor:pointer;color:var(--ink3);font-size:18px;"><i class="ti ti-x"></i></button>
+  </div>
+  <div id="ext-panel-body">
+    <div style="font-size:13px;color:var(--ink3);margin-bottom:12px;line-height:1.6;">
+      Select a person from your archive to search external genealogy databases with their information pre-filled.
+    </div>
+    <div class="form-group">
+      <label class="form-label">Person to research</label>
+      <select class="form-select" id="ext-person-select" onchange="this.dataset.lastPid=this.value;renderExtLinks()">
+        <option value="">— Select a person —</option>
+      </select>
+    </div>
+    <div id="ext-links-container"></div>
+  </div>
+</div>
 </body>
 </html>
