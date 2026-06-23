@@ -3096,7 +3096,13 @@ let DB = {
   relationships: [],
   familyLines: [],
   customDocTypes: [], // user-added document types: { id, value, label, icon }
-  places: [],         // Places library: { id, label, street, city, county, state, country, lat, lng }
+  places: [],         // Places library: { id, label, building, street, city, state, country, parent, lat, lng }
+  managedFields: {    // user-extensible option lists for fields that should stay consistent (no typos/variants)
+    occupation: [],   // each entry: { id, value, addedAt }
+    religion: [],
+    education: []
+  },
+  trash: [],          // soft-deleted records: { id, recordType, record, deletedAt }
   settings: {
     archiveName: 'My Family Archive',
     researcher: '',
@@ -3133,9 +3139,11 @@ function load() {
       const parsed = JSON.parse(raw);
       DB = Object.assign(DB, parsed);
       // ensure arrays exist
-      ['people','events','documents','photos','communications','sources','tasks','relationships','familyLines','fans','bugs','customDocTypes','places']
+      ['people','events','documents','photos','communications','sources','tasks','relationships','familyLines','fans','bugs','customDocTypes','places','trash']
         .forEach(k => { if (!Array.isArray(DB[k])) DB[k] = []; });
       if (!DB.factConfidence || typeof DB.factConfidence !== 'object') DB.factConfidence = {};
+      if (!DB.managedFields || typeof DB.managedFields !== 'object') DB.managedFields = {};
+      ['occupation','religion','education'].forEach(k => { if (!Array.isArray(DB.managedFields[k])) DB.managedFields[k] = []; });
       DB.settings = Object.assign(DB.settings, parsed.settings || {});
       // Backward-compat: older photos/documents may not have these fields yet
       DB.photos.forEach(ph => {
@@ -3273,14 +3281,18 @@ function formatAge(age, approx) {
 // ══════════════════════════════════════════════════════════════════
 // ── PLACES LIBRARY ───────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════
-// A Place is: { id, label, street, city, county, state, country, lat, lng, addedAt }
+// Mirrors the location system from K's book annotator app:
+// A Place is: { id, label, building, street, city, state, country, parent, lat, lng, addedAt }
 // `label` is the full display string built from the structured fields, and is
 // what gets stored on people/events/photos/documents (so old plain-text data
 // and new Place-linked data look identical at rest — just strings — but new
 // entries can be matched back to a canonical Place by exact label match).
+// `parent` lets a place nest inside a broader one (e.g. a specific house inside a city).
+// Coordinates are geocoded live via OpenStreetMap's Nominatim and cached here,
+// so the network is only hit once per place, ever.
 
 function buildPlaceLabel(parts) {
-  return [parts.street, parts.city, parts.county, parts.state, parts.country].filter(Boolean).join(', ');
+  return [parts.building, parts.street, parts.city, parts.state, parts.country].filter(Boolean).join(', ');
 }
 
 function findPlaceByLabel(label) {
@@ -3289,21 +3301,32 @@ function findPlaceByLabel(label) {
   return (DB.places||[]).find(pl => pl.label.trim().toLowerCase() === norm) || null;
 }
 
+function findPlaceById(id) {
+  return (DB.places||[]).find(pl => pl.id === id) || null;
+}
+
 // Creates a Place from structured fields if one with this exact label doesn't
 // already exist; returns the existing or newly-created Place either way.
 function getOrCreatePlace(parts) {
   const label = buildPlaceLabel(parts);
   if (!label) return null;
   const existing = findPlaceByLabel(label);
-  if (existing) return existing;
+  if (existing) {
+    // Fill in any newly-provided structured fields/coords without clobbering existing data
+    ['building','street','city','state','country','parent','lat','lng'].forEach(k => {
+      if (parts[k] !== undefined && parts[k] !== null && parts[k] !== '' && !existing[k]) existing[k] = parts[k];
+    });
+    return existing;
+  }
   const place = {
     id: genId(),
     label,
+    building: parts.building || '',
     street: parts.street || '',
     city: parts.city || '',
-    county: parts.county || '',
     state: parts.state || '',
     country: parts.country || '',
+    parent: parts.parent || '',
     lat: parts.lat ?? null,
     lng: parts.lng ?? null,
     addedAt: new Date().toISOString()
@@ -3314,10 +3337,62 @@ function getOrCreatePlace(parts) {
 
 // Plain-text fallback: if a typed string exactly matches a saved Place's label,
 // treat it as that Place (no new Place created). Otherwise leave it as free text —
-// we never force structured entry, per K's "gradual conversion" preference.
+// we never force structured entry; conversion to a full Place happens gradually.
 function resolvePlaceText(text) {
   if (!text) return null;
   return findPlaceByLabel(text);
+}
+
+// Registers a plain free-text place string into the Places library if it
+// isn't already there (organic growth — K never has to "set up" Places ahead
+// of time; typing the same text twice automatically becomes reusable).
+function touchPlace(text) {
+  if (!text || !text.trim()) return;
+  const existing = findPlaceByLabel(text);
+  if (existing) return existing;
+  const place = { id: genId(), label: text.trim(), building:'', street:'', city:'', state:'', country:'', parent:'', lat:null, lng:null, addedAt: new Date().toISOString() };
+  DB.places.push(place);
+  return place;
+}
+
+// ── Live geocoding (OpenStreetMap Nominatim) ─────────────────────
+// Same approach as the book annotator: free, no API key, rate-limited to
+// roughly 1 request/second per Nominatim's usage policy. Network failures
+// fail silently — geocoding is an enhancement, never required to save data.
+async function geocodePlace(query) {
+  if (!query || query.trim().length < 3) return null;
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
+      { headers: { 'Accept-Language': 'en' } });
+    const data = await r.json();
+    if (data && data.length) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+  } catch(e) { /* offline or blocked — silently skip */ }
+  return null;
+}
+
+// Returns up to 4 candidate matches with parsed address components, for a
+// confirm-from-list UI (so we never silently guess the wrong "Springfield").
+async function geocodeCandidates(query) {
+  if (!query || query.trim().length < 3) return [];
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=4&addressdetails=1`,
+      { headers: { 'Accept-Language': 'en' } });
+    const data = await r.json();
+    if (!data || !data.length) return [];
+    return data.map(item => {
+      const a = item.address || {};
+      const houseAndRoad = [a.house_number, a.road].filter(Boolean).join(' ');
+      return {
+        display: item.display_name || '',
+        street: houseAndRoad,
+        city: a.city || a.town || a.village || a.suburb || '',
+        state: a.state || a.region || a.province || '',
+        country: a.country || '',
+        lat: parseFloat(item.lat),
+        lng: parseFloat(item.lon)
+      };
+    }).filter(x => x.city || x.country || x.street || x.state);
+  } catch(e) { return []; }
 }
 
 // ── Autocomplete attachment ──────────────────────────────────────
@@ -3364,6 +3439,7 @@ function attachPlaceAutocomplete(inputId) {
       <div class="place-ac-item" onmousedown="event.preventDefault();selectPlaceForInput('${inputId}','${pl.id}')">
         <i class="ti ti-map-pin" style="font-size:12px;color:var(--sepia);flex-shrink:0;"></i>
         <span>${pl.label}</span>
+        ${pl.lat ? '<i class="ti ti-map-pin-filled" style="font-size:10px;color:var(--gold);margin-left:auto;" title="Has map coordinates"></i>' : ''}
       </div>`).join('');
     dropdown.classList.add('open');
   }
@@ -3374,7 +3450,7 @@ function attachPlaceAutocomplete(inputId) {
 }
 
 function selectPlaceForInput(inputId, placeId) {
-  const place = (DB.places||[]).find(p => p.id === placeId);
+  const place = findPlaceById(placeId);
   const input = document.getElementById(inputId);
   if (!place || !input) return;
   input.value = place.label;
@@ -3391,16 +3467,144 @@ function initAllPlaceAutocompletes() {
     .forEach(attachPlaceAutocomplete);
 }
 
-// Registers a plain free-text place string into the Places library if it
-// isn't already there (organic growth — K never has to "set up" Places ahead
-// of time; typing the same text twice automatically becomes reusable).
-function touchPlace(text) {
-  if (!text || !text.trim()) return;
-  const existing = findPlaceByLabel(text);
-  if (existing) return existing;
-  const place = { id: genId(), label: text.trim(), street:'', city:'', county:'', state:'', country:'', lat:null, lng:null, addedAt: new Date().toISOString() };
-  DB.places.push(place);
-  return place;
+// ══════════════════════════════════════════════════════════════════
+// ── TRASH / RECOVERY ─────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+// Soft-delete: every delete in the app routes through moveToTrash() instead
+// of permanently splicing a record out. The record (plus any data needed to
+// fully restore it — e.g. a person's related events/relationships) sits in
+// DB.trash until the person empties the trash or restores it. Nothing is
+// permanently gone until the trash is explicitly emptied.
+// A trash entry: { id, recordType, record, related, deletedAt, label }
+// `related` carries cascade data — e.g. for a deleted person, their events
+// and relationships, so restoring the person also restores those links.
+
+const TRASH_LABELS = {
+  person: 'Person', event: 'Event', document: 'Document', photo: 'Photo',
+  communication: 'Correspondence', source: 'Source', task: 'Research Task'
+};
+
+function describeTrashRecord(recordType, record) {
+  switch (recordType) {
+    case 'person':        return fullName(record) || 'Unnamed person';
+    case 'event':         return `${record.type || 'Event'}${record.date ? ' — ' + record.date : ''}`;
+    case 'document':      return record.title || docTypeLabel(record.docType);
+    case 'photo':         return record.caption || 'Untitled photo';
+    case 'communication': return record.subject || record.type || 'Correspondence';
+    case 'source':        return record.title || record.citation || 'Source';
+    case 'task':          return record.title || 'Research task';
+    default:               return 'Record';
+  }
+}
+
+function moveToTrash(recordType, record, related) {
+  if (!record) return;
+  DB.trash.push({
+    id: genId(),
+    recordType,
+    record: JSON.parse(JSON.stringify(record)),
+    related: related ? JSON.parse(JSON.stringify(related)) : null,
+    label: describeTrashRecord(recordType, record),
+    deletedAt: new Date().toISOString()
+  });
+}
+
+function restoreFromTrash(trashId) {
+  const entry = DB.trash.find(t => t.id === trashId);
+  if (!entry) return;
+  const { recordType, record, related } = entry;
+
+  switch (recordType) {
+    case 'person':
+      DB.people.push(record);
+      if (related) {
+        (related.events||[]).forEach(e => DB.events.push(e));
+        (related.relationships||[]).forEach(r => DB.relationships.push(r));
+        (related.fans||[]).forEach(f => DB.fans.push(f));
+        if (related.factConfidence) DB.factConfidence[record.id] = related.factConfidence;
+      }
+      break;
+    case 'event':         DB.events.push(record); break;
+    case 'document':      DB.documents.push(record); break;
+    case 'photo':         DB.photos.push(record); break;
+    case 'communication': DB.communications.push(record); break;
+    case 'source':        DB.sources.push(record); break;
+    case 'task':          DB.tasks.push(record); break;
+  }
+
+  DB.trash = DB.trash.filter(t => t.id !== trashId);
+  save();
+  renderTrash();
+  // Refresh whichever panel would show this record type
+  const refreshers = { person: renderPeople, event: renderTimeline, document: renderDocs, photo: renderGallery, communication: renderComms, source: renderSources, task: renderResearch };
+  if (refreshers[recordType]) refreshers[recordType]();
+  updateDashStats();
+  updateSidebarStats();
+}
+
+function permanentlyDeleteTrashItem(trashId) {
+  const entry = DB.trash.find(t => t.id === trashId);
+  if (!entry) return;
+  if (!confirm(`Permanently delete "${entry.label}"? This truly cannot be undone.`)) return;
+  DB.trash = DB.trash.filter(t => t.id !== trashId);
+  save();
+  renderTrash();
+}
+
+function emptyTrash() {
+  if (!DB.trash.length) return;
+  if (!confirm(`Permanently delete all ${DB.trash.length} item(s) in the trash? This cannot be undone.`)) return;
+  DB.trash = [];
+  save();
+  renderTrash();
+}
+
+function openTrashModal() {
+  renderTrash();
+  openModal('trash-modal');
+}
+
+function renderTrash() {
+  const container = document.getElementById('trash-list');
+  if (!container) return;
+  const countEl = document.getElementById('trash-count-label');
+  if (countEl) countEl.textContent = DB.trash.length ? `${DB.trash.length} item${DB.trash.length===1?'':'s'}` : '';
+
+  if (!DB.trash.length) {
+    container.innerHTML = `<div class="empty-state" style="padding:30px 20px;"><i class="ti ti-trash" style="font-size:36px;"></i><h3>Trash is empty</h3><p>Deleted people, events, photos, documents, correspondence, sources, and tasks will appear here until you restore or permanently remove them.</p></div>`;
+    return;
+  }
+
+  const sorted = [...DB.trash].sort((a,b) => new Date(b.deletedAt) - new Date(a.deletedAt));
+  container.innerHTML = sorted.map(entry => `
+    <div class="trash-item">
+      <div class="trash-item-icon"><i class="ti ${trashIcon(entry.recordType)}"></i></div>
+      <div class="trash-item-body">
+        <div class="trash-item-label">${entry.label}</div>
+        <div class="trash-item-meta">${TRASH_LABELS[entry.recordType]||entry.recordType} · deleted ${timeAgo(entry.deletedAt)}</div>
+      </div>
+      <div class="trash-item-actions">
+        <button class="btn btn-sm" onclick="restoreFromTrash('${entry.id}')"><i class="ti ti-rotate-2"></i> Restore</button>
+        <button class="btn btn-sm btn-danger" onclick="permanentlyDeleteTrashItem('${entry.id}')"><i class="ti ti-x"></i></button>
+      </div>
+    </div>`).join('');
+}
+
+function trashIcon(recordType) {
+  const m = { person: 'ti-user', event: 'ti-calendar-event', document: 'ti-file-text', photo: 'ti-photo', communication: 'ti-mail', source: 'ti-book', task: 'ti-clipboard-list' };
+  return m[recordType] || 'ti-file';
+}
+
+function timeAgo(iso) {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
 }
 
 function savePerson() {
@@ -4018,7 +4222,16 @@ function openRelModal(personId) {
 }
 
 function deletePerson(id) {
-  if (!confirm('Delete this person and all associated events? This cannot be undone.')) return;
+  if (!confirm('Delete this person and all associated events? You can restore this from Trash later.')) return;
+  const person = DB.people.find(p => p.id === id);
+  if (!person) return;
+  const related = {
+    events: DB.events.filter(e => e.personId === id),
+    relationships: DB.relationships.filter(r => r.person1Id === id || r.person2Id === id),
+    fans: (DB.fans||[]).filter(f => f.person1Id === id || f.person2Id === id),
+    factConfidence: DB.factConfidence ? DB.factConfidence[id] : null
+  };
+  moveToTrash('person', person, related);
   DB.people = DB.people.filter(p => p.id !== id);
   DB.events = DB.events.filter(e => e.personId !== id);
   DB.relationships = DB.relationships.filter(r => r.person1Id !== id && r.person2Id !== id);
@@ -5080,7 +5293,8 @@ function viewDoc(id) {
 
   document.getElementById('vdm-title').textContent = d.title || 'Document';
   document.getElementById('vdm-delete-btn').onclick = () => {
-    if (!confirm('Delete this document? This cannot be undone.')) return;
+    if (!confirm('Delete this document? You can restore this from Trash later.')) return;
+    moveToTrash('document', d);
     DB.documents = DB.documents.filter(x => x.id !== id);
     save(); closeModal('view-doc-modal'); renderDocs();
   };
@@ -5168,8 +5382,13 @@ function savePhoto() {
   const imgs = document.querySelectorAll('#photo-upload-preview img');
   const peopleSelect = document.getElementById('photo-people');
   const peopleIds = Array.from(peopleSelect.selectedOptions).map(o => o.value);
+  const maybeSelect = document.getElementById('photo-people-maybe');
+  const unconfirmedPeopleIds = maybeSelect ? Array.from(maybeSelect.selectedOptions).map(o => o.value).filter(id => !peopleIds.includes(id)) : [];
 
   if (!imgs.length) { alert('Please upload at least one photo.'); return; }
+
+  const location = document.getElementById('photo-location').value.trim();
+  touchPlace(location);
 
   imgs.forEach(img => {
     DB.photos.push({
@@ -5178,10 +5397,12 @@ function savePhoto() {
       caption: document.getElementById('photo-caption').value.trim(),
       type: document.getElementById('photo-type').value,
       date: document.getElementById('photo-date').value.trim(),
-      location: document.getElementById('photo-location').value.trim(),
+      location,
       source: document.getElementById('photo-source').value.trim(),
       notes: document.getElementById('photo-notes').value.trim(),
       peopleIds,
+      unconfirmedPeopleIds,
+      faceTags: [], // [{ id, personId, x, y, confirmed }] — x/y are % of image width/height
       addedAt: new Date().toISOString()
     });
   });
@@ -5224,32 +5445,211 @@ function viewPhoto(id) {
   document.getElementById('vpm-title').textContent = ph.caption || 'Photo';
   document.getElementById('vpm-edit-btn').onclick = () => { closeModal('view-photo-modal'); editPhoto(id); };
   document.getElementById('vpm-delete-btn').onclick = () => {
-    if (!confirm('Delete this photo? This cannot be undone.')) return;
+    if (!confirm('Delete this photo? You can restore this from Trash later.')) return;
+    moveToTrash('photo', ph);
     DB.photos = DB.photos.filter(x => x.id !== id);
     save(); closeModal('view-photo-modal'); renderGallery();
   };
 
-  const people = (ph.peopleIds||[]).map(pid => { const p = DB.people.find(x=>x.id===pid); return p ? fullName(p) : ''; }).filter(Boolean);
+  const confirmedNames   = (ph.peopleIds||[]).map(pid => { const p = DB.people.find(x=>x.id===pid); return p ? fullName(p) : ''; }).filter(Boolean);
+  const unconfirmedNames = (ph.unconfirmedPeopleIds||[]).map(pid => { const p = DB.people.find(x=>x.id===pid); return p ? fullName(p) : ''; }).filter(Boolean);
   const meta = [
     ph.date     ? `<span><i class="ti ti-calendar" style="font-size:12px;"></i> ${ph.date}</span>` : '',
     ph.location ? `<span><i class="ti ti-map-pin" style="font-size:12px;"></i> ${ph.location}</span>` : '',
-    people.length?`<span><i class="ti ti-users" style="font-size:12px;"></i> ${people.join(', ')}</span>` : '',
+    confirmedNames.length   ? `<span><i class="ti ti-users" style="font-size:12px;"></i> ${confirmedNames.join(', ')}</span>` : '',
+    unconfirmedNames.length ? `<span style="color:var(--gold);"><i class="ti ti-help-circle" style="font-size:12px;"></i> Maybe: ${unconfirmedNames.join(', ')}</span>` : '',
     ph.source   ? `<span><i class="ti ti-book" style="font-size:12px;"></i> ${ph.source}</span>` : '',
   ].filter(Boolean).join('');
 
-  // Build a thumbnail reel for the photos array if multiple images stored
-  const imgs = Array.isArray(ph.images) ? ph.images : (ph.src ? [ph.src] : []);
-  const imgHtml = imgs.length
-    ? `<div style="background:#000;text-align:center;"><img src="${imgs[0]}" id="vpm-main-img" style="max-height:420px;max-width:100%;object-fit:contain;"></div>`
+  // The actual stored field is dataUrl (one image per photo record) — images/src never existed in savePhoto.
+  const imgSrc = ph.dataUrl || (Array.isArray(ph.images) ? ph.images[0] : ph.src) || '';
+  const imgHtml = imgSrc
+    ? `<div id="vpm-img-wrap" style="background:#000;text-align:center;position:relative;user-select:none;">
+        <img src="${imgSrc}" id="vpm-main-img" style="max-height:420px;max-width:100%;object-fit:contain;display:block;margin:0 auto;">
+        <div id="vpm-tag-layer" style="position:absolute;inset:0;cursor:default;"></div>
+      </div>`
     : `<div style="background:var(--parchment2);height:200px;display:flex;align-items:center;justify-content:center;color:var(--ink3);"><i class="ti ti-photo" style="font-size:48px;"></i></div>`;
 
   document.getElementById('vpm-body').innerHTML = `
     ${imgHtml}
-    <div style="padding:16px 20px;">
+    <div style="padding:12px 20px 4px;">
+      ${imgSrc ? `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <button class="btn btn-sm" id="vpm-tag-toggle" onclick="toggleFaceTagMode('${id}')"><i class="ti ti-tag"></i> Tag People</button>
+        <span style="font-size:11px;color:var(--ink3);" id="vpm-tag-hint"></span>
+      </div>` : ''}
       ${meta ? `<div style="display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--ink3);margin-bottom:12px;">${meta}</div>` : ''}
       ${ph.notes ? `<div style="font-size:13px;color:var(--ink2);line-height:1.6;font-style:italic;">${ph.notes}</div>` : ''}
     </div>`;
   openModal('view-photo-modal');
+  if (imgSrc) renderFaceTagPins(id);
+}
+
+// ── FACE TAGGING ──────────────────────────────────────────────────
+// Click-to-pin tagging: click anywhere on the photo to drop a pin at that
+// point, pick (or type) who it is, and mark Confirmed or Maybe. Pins store
+// x/y as percentages of the rendered image so they stay correctly placed
+// at any viewer size. faceTags is the source of truth for *where* each
+// person is in the photo; peopleIds/unconfirmedPeopleIds (kept in sync
+// automatically) remain the source of truth for *whether* they're confirmed,
+// so every other part of the app (search, profile, timeline) only ever
+// needs to read those two plain arrays.
+let faceTagModeActive = false;
+let faceTagPendingPin = null; // { x, y } percentage coords, awaiting person assignment
+
+function toggleFaceTagMode(photoId) {
+  faceTagModeActive = !faceTagModeActive;
+  const btn = document.getElementById('vpm-tag-toggle');
+  const hint = document.getElementById('vpm-tag-hint');
+  const layer = document.getElementById('vpm-tag-layer');
+  if (!layer) return;
+  if (faceTagModeActive) {
+    btn.classList.add('btn-primary');
+    if (hint) hint.textContent = 'Click anywhere on the photo to tag a person';
+    layer.style.cursor = 'crosshair';
+    layer.onclick = (e) => handleFaceTagClick(e, photoId);
+  } else {
+    btn.classList.remove('btn-primary');
+    if (hint) hint.textContent = '';
+    layer.style.cursor = 'default';
+    layer.onclick = null;
+    faceTagPendingPin = null;
+    closeFaceTagPicker();
+  }
+}
+
+function handleFaceTagClick(e, photoId) {
+  const layer = document.getElementById('vpm-tag-layer');
+  const rect = layer.getBoundingClientRect();
+  const x = ((e.clientX - rect.left) / rect.width) * 100;
+  const y = ((e.clientY - rect.top) / rect.height) * 100;
+  faceTagPendingPin = { x, y };
+  openFaceTagPicker(photoId, x, y);
+}
+
+function openFaceTagPicker(photoId, x, y) {
+  closeFaceTagPicker();
+  const layer = document.getElementById('vpm-tag-layer');
+  const picker = document.createElement('div');
+  picker.id = 'face-tag-picker';
+  picker.className = 'face-tag-picker';
+  picker.style.left = x + '%';
+  picker.style.top = y + '%';
+  picker.onclick = (e) => e.stopPropagation();
+  const peopleOptions = DB.people
+    .sort((a,b)=>fullName(a).localeCompare(fullName(b)))
+    .map(p => `<option value="${p.id}">${fullName(p)}</option>`).join('');
+  picker.innerHTML = `
+    <div class="face-tag-picker-inner">
+      <select class="form-select" id="ftp-person" style="font-size:12px;padding:5px 7px;margin-bottom:6px;">
+        <option value="">Who is this?</option>
+        ${peopleOptions}
+      </select>
+      <div style="display:flex;gap:5px;">
+        <button class="btn btn-sm btn-primary" style="flex:1;font-size:11px;padding:5px;" onclick="confirmFaceTag('${photoId}', true)">
+          <i class="ti ti-check"></i> Confirmed
+        </button>
+        <button class="btn btn-sm" style="flex:1;font-size:11px;padding:5px;" onclick="confirmFaceTag('${photoId}', false)">
+          <i class="ti ti-help-circle"></i> Maybe
+        </button>
+      </div>
+      <button class="btn btn-sm" style="width:100%;margin-top:5px;font-size:11px;padding:4px;" onclick="closeFaceTagPicker()">Cancel</button>
+    </div>`;
+  layer.appendChild(picker);
+  // Marker dot at the click point
+  const dot = document.createElement('div');
+  dot.className = 'face-tag-pending-dot';
+  dot.style.left = x + '%';
+  dot.style.top = y + '%';
+  dot.id = 'face-tag-pending-dot';
+  layer.appendChild(dot);
+}
+
+function closeFaceTagPicker() {
+  document.getElementById('face-tag-picker')?.remove();
+  document.getElementById('face-tag-pending-dot')?.remove();
+}
+
+function confirmFaceTag(photoId, confirmed) {
+  const personId = document.getElementById('ftp-person').value;
+  if (!personId) { alert('Please choose who this is.'); return; }
+  if (!faceTagPendingPin) return;
+  const ph = DB.photos.find(x => x.id === photoId);
+  if (!ph) return;
+  if (!Array.isArray(ph.faceTags)) ph.faceTags = [];
+
+  // Replace any existing tag for this same person (avoid duplicate pins for one person)
+  ph.faceTags = ph.faceTags.filter(t => t.personId !== personId);
+  ph.faceTags.push({ id: genId(), personId, x: faceTagPendingPin.x, y: faceTagPendingPin.y, confirmed });
+
+  syncPhotoPeopleFromFaceTags(ph);
+  save();
+  faceTagPendingPin = null;
+  closeFaceTagPicker();
+  renderFaceTagPins(photoId);
+  // Refresh the meta line (names list) without closing tag mode
+  refreshPhotoViewerMeta(photoId);
+}
+
+// Keeps peopleIds/unconfirmedPeopleIds in sync with faceTags, so every other
+// part of the app can keep reading those two plain arrays as the single
+// source of truth for "is this person confirmed or just a guess in this photo."
+function syncPhotoPeopleFromFaceTags(ph) {
+  const confirmedFromTags   = ph.faceTags.filter(t => t.confirmed).map(t => t.personId);
+  const unconfirmedFromTags = ph.faceTags.filter(t => !t.confirmed).map(t => t.personId);
+  ph.peopleIds = [...new Set([...(ph.peopleIds||[]).filter(id => !ph.faceTags.some(t=>t.personId===id)), ...confirmedFromTags])];
+  ph.unconfirmedPeopleIds = [...new Set([...(ph.unconfirmedPeopleIds||[]).filter(id => !ph.faceTags.some(t=>t.personId===id)), ...unconfirmedFromTags])];
+  // If a person is now confirmed via a tag, don't also leave them in unconfirmed
+  ph.unconfirmedPeopleIds = ph.unconfirmedPeopleIds.filter(id => !ph.peopleIds.includes(id));
+}
+
+function renderFaceTagPins(photoId) {
+  const ph = DB.photos.find(x => x.id === photoId);
+  const layer = document.getElementById('vpm-tag-layer');
+  if (!ph || !layer) return;
+  layer.querySelectorAll('.face-tag-pin').forEach(el => el.remove());
+  (ph.faceTags||[]).forEach(tag => {
+    const p = DB.people.find(x => x.id === tag.personId);
+    const pin = document.createElement('div');
+    pin.className = 'face-tag-pin' + (tag.confirmed ? '' : ' maybe');
+    pin.style.left = tag.x + '%';
+    pin.style.top = tag.y + '%';
+    pin.title = (p ? fullName(p) : 'Unknown') + (tag.confirmed ? '' : ' (maybe)');
+    pin.innerHTML = `<span class="face-tag-pin-label">${p ? fullName(p) : '?'}${tag.confirmed ? '' : ' ?'}</span>`;
+    pin.onclick = (e) => {
+      e.stopPropagation();
+      if (!faceTagModeActive) return;
+      if (confirm(`Remove tag for ${p ? fullName(p) : 'this person'}?`)) {
+        ph.faceTags = ph.faceTags.filter(t => t.id !== tag.id);
+        syncPhotoPeopleFromFaceTags(ph);
+        save();
+        renderFaceTagPins(photoId);
+        refreshPhotoViewerMeta(photoId);
+      }
+    };
+    layer.appendChild(pin);
+  });
+}
+
+// Updates just the meta line (names/date/location) in the open photo viewer
+// without re-rendering the whole modal — keeps tag mode + pins uninterrupted.
+function refreshPhotoViewerMeta(photoId) {
+  const ph = DB.photos.find(x => x.id === photoId);
+  if (!ph) return;
+  const confirmedNames   = (ph.peopleIds||[]).map(pid => { const p = DB.people.find(x=>x.id===pid); return p ? fullName(p) : ''; }).filter(Boolean);
+  const unconfirmedNames = (ph.unconfirmedPeopleIds||[]).map(pid => { const p = DB.people.find(x=>x.id===pid); return p ? fullName(p) : ''; }).filter(Boolean);
+  const meta = [
+    ph.date     ? `<span><i class="ti ti-calendar" style="font-size:12px;"></i> ${ph.date}</span>` : '',
+    ph.location ? `<span><i class="ti ti-map-pin" style="font-size:12px;"></i> ${ph.location}</span>` : '',
+    confirmedNames.length   ? `<span><i class="ti ti-users" style="font-size:12px;"></i> ${confirmedNames.join(', ')}</span>` : '',
+    unconfirmedNames.length ? `<span style="color:var(--gold);"><i class="ti ti-help-circle" style="font-size:12px;"></i> Maybe: ${unconfirmedNames.join(', ')}</span>` : '',
+    ph.source   ? `<span><i class="ti ti-book" style="font-size:12px;"></i> ${ph.source}</span>` : '',
+  ].filter(Boolean).join('');
+  const metaContainers = document.querySelectorAll('#vpm-body > div > div');
+  // Find the meta div specifically (it's the first flex-wrap div after the tag-toggle row)
+  const body = document.getElementById('vpm-body');
+  if (!body) return;
+  const candidates = body.querySelectorAll('div[style*="flex-wrap:wrap"]');
+  if (candidates.length) candidates[0].innerHTML = meta;
 }
 
 // ── COMMUNICATIONS ───────────────────────────────────────────────
@@ -5319,7 +5719,8 @@ function viewComm(id) {
   document.getElementById('vcm-title').textContent = c.subject || c.type || 'Communication';
   document.getElementById('vcm-edit-btn').onclick = () => { closeModal('view-comm-modal'); editComm(id); };
   document.getElementById('vcm-delete-btn').onclick = () => {
-    if (!confirm('Delete this entry? This cannot be undone.')) return;
+    if (!confirm('Delete this entry? You can restore this from Trash later.')) return;
+    moveToTrash('communication', c);
     DB.communications = DB.communications.filter(x => x.id !== id);
     save(); closeModal('view-comm-modal'); renderComms();
   };
@@ -5438,7 +5839,9 @@ function renderSources() {
 }
 
 function deleteSource(id) {
-  if (!confirm('Delete this source? This cannot be undone.')) return;
+  if (!confirm('Delete this source? You can restore this from Trash later.')) return;
+  const s = DB.sources.find(x => x.id === id);
+  if (s) moveToTrash('source', s);
   DB.sources = DB.sources.filter(x => x.id !== id);
   save(); renderSources();
 }
@@ -7811,7 +8214,9 @@ function saveEditEvent() {
 }
 
 function deleteEvent(id) {
-  if (!confirm('Delete this event? This cannot be undone.')) return;
+  if (!confirm('Delete this event? You can restore this from Trash later.')) return;
+  const ev = DB.events.find(e => e.id === id);
+  if (ev) moveToTrash('event', ev);
   DB.events = DB.events.filter(e => e.id !== id);
   save();
   if (currentPersonId) openPersonDetail(currentPersonId);
@@ -7882,8 +8287,10 @@ function saveEditTask() {
 }
 
 function deleteTask(id) {
-  if (!confirm('Delete this task? This cannot be undone.')) return;
-  DB.tasks = DB.tasks.filter(t => t.id !== id);
+  if (!confirm('Delete this task? You can restore this from Trash later.')) return;
+  const t = DB.tasks.find(x => x.id === id);
+  if (t) moveToTrash('task', t);
+  DB.tasks = DB.tasks.filter(x => x.id !== id);
   save(); renderResearch();
 }
 
