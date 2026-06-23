@@ -158,6 +158,48 @@
   }
   #usearch-input::placeholder { color: var(--ink3); }
   #usearch-kbd { font-size: 11px; color: var(--ink3); background: var(--parchment3); border: 1px solid var(--border); border-radius: 3px; padding: 2px 5px; white-space: nowrap; flex-shrink: 0; }
+  #usearch-chips {
+    display: flex; gap: 6px; padding: 10px 18px;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto; flex-wrap: nowrap;
+    scrollbar-width: thin;
+  }
+  #usearch-chips::-webkit-scrollbar { height: 4px; }
+  .usearch-chip {
+    flex-shrink: 0;
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 11px; font-size: 12px; font-weight: 500;
+    border-radius: 14px; border: 1px solid var(--border2);
+    background: var(--parchment2); color: var(--ink2);
+    cursor: pointer; white-space: nowrap;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .usearch-chip:hover { background: var(--parchment3); }
+  .usearch-chip.active {
+    background: var(--gold); border-color: var(--gold);
+    color: #fff;
+  }
+  .usearch-chip .ti { font-size: 13px; }
+
+  /* ── CUSTOM DOCUMENT TYPES ── */
+  .ndt-icon-opt {
+    width: 38px; height: 38px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border2); border-radius: var(--radius);
+    background: var(--parchment2); color: var(--ink2);
+    cursor: pointer; font-size: 17px;
+    transition: background .12s, border-color .12s, color .12s;
+  }
+  .ndt-icon-opt:hover { background: var(--parchment3); }
+  .ndt-icon-opt.selected { background: var(--gold); border-color: var(--gold); color: #fff; }
+  .custom-doctype-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--parchment2); margin-bottom: 6px;
+  }
+  .custom-doctype-row .ti:first-child { font-size: 16px; color: var(--sepia); flex-shrink: 0; }
+  .custom-doctype-row .cdt-label { flex: 1; font-size: 13px; color: var(--ink); }
+  .custom-doctype-row .cdt-count { font-size: 11px; color: var(--ink3); flex-shrink: 0; }
   #usearch-results {
     overflow-y: auto; flex: 1;
     padding: 8px 0;
@@ -1178,9 +1220,16 @@
             <option value="will">Will/probate</option>
             <option value="land">Land deed</option>
             <option value="newspaper">Newspaper</option>
+            <option value="obituary">Obituary</option>
+            <option value="prayer_card">Prayer/memorial card</option>
             <option value="letter">Letter/correspondence</option>
             <option value="photo">Photograph</option>
+            <option value="church">Church record</option>
+            <option value="school">School record</option>
+            <option value="medical">Medical record</option>
+            <option value="legal">Legal document</option>
             <option value="other">Other</option>
+            <optgroup label="Custom Types" id="doc-filter-custom-group"></optgroup>
           </select>
           <button class="btn btn-primary" onclick="openModal('add-document-modal')">
             <i class="ti ti-file-plus"></i> Add Document
@@ -1845,6 +1894,8 @@
           <option value="will">Will / Probate Record</option>
           <option value="land">Land Deed / Property Record</option>
           <option value="newspaper">Newspaper Clipping</option>
+          <option value="obituary">Obituary</option>
+          <option value="prayer_card">Prayer Card / Memorial Card</option>
           <option value="letter">Letter / Correspondence</option>
           <option value="photo">Photograph</option>
           <option value="church">Church Record</option>
@@ -1852,7 +1903,12 @@
           <option value="medical">Medical Record</option>
           <option value="legal">Legal Document</option>
           <option value="other">Other</option>
+          <optgroup label="Custom Types" id="doc-type-custom-group"></optgroup>
         </select>
+        <div class="text-sm text-muted mt-8" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>Don't see what you need?</span>
+          <span style="color:var(--gold);cursor:pointer;" onclick="openManageDocTypes()"><i class="ti ti-settings" style="font-size:11px;"></i> Manage document types</span>
+        </div>
       </div>
       <div class="form-group">
         <label class="form-label">Document Title</label>
@@ -2427,11 +2483,75 @@
       <i class="ti ti-mail" style="font-size:20px;color:var(--gold)"></i>
       <div class="modal-title" id="vcm-title">Communication</div>
       <div style="margin-left:auto;display:flex;gap:8px;">
+        <button class="btn btn-sm" id="vcm-edit-btn"><i class="ti ti-pencil"></i> Edit</button>
         <button class="btn btn-sm btn-danger" id="vcm-delete-btn"><i class="ti ti-trash"></i> Delete</button>
         <button class="modal-close" onclick="closeModal('view-comm-modal')"><i class="ti ti-x"></i></button>
       </div>
     </div>
     <div class="modal-body" id="vcm-body"></div>
+  </div>
+</div>
+
+<!-- EDIT COMM MODAL -->
+<div class="modal-backdrop" id="edit-comm-modal">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-header">
+      <i class="ti ti-mail" style="font-size:20px;color:var(--gold)"></i>
+      <div class="modal-title">Edit Correspondence</div>
+      <button class="modal-close" onclick="closeModal('edit-comm-modal')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="ecom-id">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Type</label>
+          <select class="form-select" id="ecom-type">
+            <option value="letter">Letter</option>
+            <option value="telegram">Telegram</option>
+            <option value="postcard">Postcard</option>
+            <option value="email">Email</option>
+            <option value="phone">Phone call</option>
+            <option value="note">Personal note</option>
+            <option value="diary">Diary entry</option>
+            <option value="interview">Oral history interview</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input class="form-input" id="ecom-date" type="text" placeholder="e.g. 12 Jun 1944">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">From</label>
+          <input class="form-input" id="ecom-from" placeholder="Person or full name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">To</label>
+          <input class="form-input" id="ecom-to" placeholder="Recipient name">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Subject / Re</label>
+        <input class="form-input" id="ecom-subject" placeholder="Brief summary">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Summary / Transcription</label>
+        <textarea class="form-textarea" id="ecom-content" rows="4" placeholder="Full text or summary of the communication…"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Location of Original</label>
+        <input class="form-input" id="ecom-location" placeholder="e.g. Family collection, National Archives, personal files">
+      </div>
+      <div class="form-group">
+        <label class="form-label">People Connected</label>
+        <select class="form-select" id="ecom-people" multiple style="height:70px;"></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('edit-comm-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditComm()"><i class="ti ti-check"></i> Save Changes</button>
+    </div>
   </div>
 </div>
 
@@ -2872,6 +2992,37 @@
   </div>
 </div>
 
+<!-- MANAGE DOCUMENT TYPES MODAL -->
+<div class="modal-backdrop" id="manage-doctypes-modal">
+  <div class="modal" style="max-width:520px;max-height:85vh;">
+    <div class="modal-header">
+      <i class="ti ti-category" style="font-size:20px;color:var(--gold)"></i>
+      <div class="modal-title">Manage Document Types</div>
+      <button class="modal-close" onclick="closeModal('manage-doctypes-modal')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--ink3);margin-bottom:14px;">
+        Add your own document types once — they'll show up in the Document Type dropdown and filters from then on, no need to ask me to add them again.
+      </div>
+      <div id="custom-doctype-list" style="margin-bottom:18px;"></div>
+      <div style="border-top:1px solid var(--border);padding-top:14px;">
+        <div class="form-group">
+          <label class="form-label">New Type Name</label>
+          <input class="form-input" id="ndt-label" placeholder="e.g. Funeral Program, Family Bible Record, Naturalization Papers">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Icon</label>
+          <div id="ndt-icon-picker" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('manage-doctypes-modal')">Done</button>
+      <button class="btn btn-primary" onclick="addCustomDocType()"><i class="ti ti-plus"></i> Add Type</button>
+    </div>
+  </div>
+</div>
+
 <!-- DOCUMENT FORM (fill-in) MODAL -->
 <div class="modal-backdrop" id="doc-form-modal">
   <div class="modal" style="max-width:700px;">
@@ -2909,6 +3060,7 @@ let DB = {
   tasks: [],
   relationships: [],
   familyLines: [],
+  customDocTypes: [], // user-added document types: { id, value, label, icon }
   settings: {
     archiveName: 'My Family Archive',
     researcher: '',
@@ -2945,7 +3097,7 @@ function load() {
       const parsed = JSON.parse(raw);
       DB = Object.assign(DB, parsed);
       // ensure arrays exist
-      ['people','events','documents','photos','communications','sources','tasks','relationships','familyLines','fans','bugs']
+      ['people','events','documents','photos','communications','sources','tasks','relationships','familyLines','fans','bugs','customDocTypes']
         .forEach(k => { if (!Array.isArray(DB[k])) DB[k] = []; });
       if (!DB.factConfidence || typeof DB.factConfidence !== 'object') DB.factConfidence = {};
       DB.settings = Object.assign(DB.settings, parsed.settings || {});
@@ -3034,6 +3186,10 @@ function personAge(p) {
 }
 
 function savePerson() {
+  // Guard against re-entry (e.g. double-click or multiple bindings)
+  if (savePerson._inProgress) return;
+  savePerson._inProgress = true;
+
   const p = {
     id: genId(),
     firstName:  document.getElementById('ap-firstname').value.trim(),
@@ -3056,7 +3212,11 @@ function savePerson() {
     photo:      null,
     addedAt:    new Date().toISOString()
   };
-  if (!p.firstName && !p.lastName) { alert('Please enter at least a first or last name.'); return; }
+  if (!p.firstName && !p.lastName) {
+    savePerson._inProgress = false;
+    alert('Please enter at least a first or last name.');
+    return;
+  }
 
   const previewImg = document.querySelector('#ap-photo-preview img');
   if (previewImg) p.photo = previewImg.src;
@@ -3083,6 +3243,10 @@ function savePerson() {
   // ── FAN ──
   saveFanEntries(p.id);
 
+  // ── PENDING RELATIONSHIP (from addPersonFromProfile) ──
+  const pendingSnap = window._pendingRel ? { ...window._pendingRel } : null;
+  window._pendingRel = null;
+
   save();
   closeModal('add-person-modal');
   clearPersonForm();
@@ -3092,9 +3256,16 @@ function savePerson() {
   renderDashRecent();
 
   if (savedRelatives > 0) {
-    // brief summary
     console.log(`Created ${savedRelatives} related people.`);
   }
+
+  // Wire pending relationship and re-open anchor profile
+  if (pendingSnap) {
+    wirePendingRel(pendingSnap.anchorId, p.id, pendingSnap.relType);
+    setTimeout(() => openPersonDetail(pendingSnap.anchorId), 100);
+  }
+
+  savePerson._inProgress = false;
 }
 
 function clearPersonForm() {
@@ -3720,22 +3891,7 @@ function launchAddPersonWithRel(anchorId, relType, suggestedLastName) {
   }, 50);
 }
 
-// Hook into savePerson to wire pending relationship
-const _origSavePerson = savePerson;
-function savePerson() {
-  const hadPending = !!window._pendingRel;
-  const pendingSnap = window._pendingRel ? { ...window._pendingRel } : null;
-  window._pendingRel = null;
-  _origSavePerson();
-  if (hadPending && pendingSnap) {
-    // Find the person just added (last in array)
-    const newPerson = DB.people[DB.people.length - 1];
-    if (newPerson) wirePendingRel(pendingSnap.anchorId, newPerson.id, pendingSnap.relType);
-    // Re-open anchor's profile
-    setTimeout(() => openPersonDetail(pendingSnap.anchorId), 100);
-  }
-}
-
+// Wire a relationship created via "Add Family Member" (addPersonFromProfile flow)
 function wirePendingRel(anchorId, newId, relType) {
   if (!anchorId || !newId || anchorId === newId) return;
   const exists = DB.relationships.find(r =>
@@ -4175,12 +4331,157 @@ const DOC_FORMS = {
     { id: 'df-executor', label: 'Executor / administratrix', type: 'text' },
     { id: 'df-witnesses', label: 'Witnesses', type: 'text' },
     { id: 'df-property', label: 'Property / assets described', type: 'textarea' },
+  ],
+  obituary: [
+    { id: 'df-deceased', label: 'Full name of deceased', type: 'text' },
+    { id: 'df-ddate', label: 'Date of death', type: 'text' },
+    { id: 'df-dage', label: 'Age at death', type: 'text' },
+    { id: 'df-dplace', label: 'Place of death', type: 'text' },
+    { id: 'df-bdate', label: 'Date of birth', type: 'text' },
+    { id: 'df-bplace', label: 'Place of birth', type: 'text' },
+    { id: 'df-survived-by', label: 'Survived by', type: 'textarea' },
+    { id: 'df-predeceased-by', label: 'Predeceased by', type: 'textarea' },
+    { id: 'df-service-info', label: 'Funeral / service details', type: 'textarea' },
+    { id: 'df-burial', label: 'Burial / interment place', type: 'text' },
+    { id: 'df-publication', label: 'Newspaper / publication', type: 'text' },
+    { id: 'df-pub-date', label: 'Publication date', type: 'text' },
+  ],
+  prayer_card: [
+    { id: 'df-person', label: 'Full name', type: 'text' },
+    { id: 'df-bdate', label: 'Date of birth', type: 'text' },
+    { id: 'df-ddate', label: 'Date of death', type: 'text' },
+    { id: 'df-verse', label: 'Scripture verse / prayer text', type: 'textarea' },
+    { id: 'df-parish', label: 'Parish / funeral home', type: 'text' },
+    { id: 'df-service-date', label: 'Service / mass date', type: 'text' },
   ]
 };
 
 function docTypeIcon(type) {
-  const m = { birth: 'ti-baby-carriage', death: 'ti-cross', marriage: 'ti-rings', census: 'ti-list', military: 'ti-military-rank', immigration: 'ti-ship', will: 'ti-scale', land: 'ti-map', newspaper: 'ti-news', letter: 'ti-mail', photo: 'ti-photo', church: 'ti-building-church', school: 'ti-school', medical: 'ti-stethoscope', legal: 'ti-gavel', other: 'ti-file' };
-  return m[type] || 'ti-file';
+  const m = { birth: 'ti-baby-carriage', death: 'ti-cross', marriage: 'ti-rings', census: 'ti-list', military: 'ti-military-rank', immigration: 'ti-ship', will: 'ti-scale', land: 'ti-map', newspaper: 'ti-news', obituary: 'ti-flower', prayer_card: 'ti-candle', letter: 'ti-mail', photo: 'ti-photo', church: 'ti-building-church', school: 'ti-school', medical: 'ti-stethoscope', legal: 'ti-gavel', other: 'ti-file' };
+  if (m[type]) return m[type];
+  const custom = (DB.customDocTypes||[]).find(c => c.value === type);
+  return custom?.icon || 'ti-file';
+}
+
+const DOC_TYPE_LABELS = {
+  birth: 'Birth Certificate', death: 'Death Certificate', marriage: 'Marriage Record',
+  census: 'Census Record', military: 'Military Record', immigration: 'Immigration / Passport / Visa',
+  will: 'Will / Probate Record', land: 'Land Deed / Property Record', newspaper: 'Newspaper Clipping',
+  obituary: 'Obituary', prayer_card: 'Prayer Card / Memorial Card', letter: 'Letter / Correspondence',
+  photo: 'Photograph', church: 'Church Record', school: 'School Record', medical: 'Medical Record',
+  legal: 'Legal Document', other: 'Other'
+};
+function docTypeLabel(type) {
+  if (!type) return 'Document';
+  if (DOC_TYPE_LABELS[type]) return DOC_TYPE_LABELS[type];
+  const custom = (DB.customDocTypes||[]).find(c => c.value === type);
+  return custom?.label || type.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+}
+
+// ── CUSTOM DOCUMENT TYPES ─────────────────────────────────────────
+const NDT_ICON_CHOICES = [
+  'ti-file', 'ti-news', 'ti-flower', 'ti-candle', 'ti-book', 'ti-mail',
+  'ti-photo', 'ti-building-church', 'ti-school', 'ti-stethoscope', 'ti-gavel',
+  'ti-map', 'ti-scale', 'ti-ship', 'ti-military-rank', 'ti-list',
+  'ti-certificate', 'ti-bible', 'ti-cross', 'ti-rings', 'ti-tools',
+  'ti-home', 'ti-briefcase', 'ti-id', 'ti-clipboard-text', 'ti-archive'
+];
+let ndtSelectedIcon = 'ti-file';
+
+function slugifyDocType(label) {
+  return label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'custom';
+}
+
+function openManageDocTypes() {
+  document.getElementById('ndt-label').value = '';
+  ndtSelectedIcon = 'ti-file';
+  document.getElementById('ndt-icon-picker').innerHTML = NDT_ICON_CHOICES.map(ic =>
+    `<div class="ndt-icon-opt${ic===ndtSelectedIcon?' selected':''}" data-icon="${ic}" onclick="selectNdtIcon('${ic}')"><i class="ti ${ic}"></i></div>`
+  ).join('');
+  renderCustomDocTypeList();
+  openModal('manage-doctypes-modal');
+}
+
+function selectNdtIcon(icon) {
+  ndtSelectedIcon = icon;
+  document.querySelectorAll('#ndt-icon-picker .ndt-icon-opt').forEach(el => {
+    el.classList.toggle('selected', el.dataset.icon === icon);
+  });
+}
+
+function renderCustomDocTypeList() {
+  const list = document.getElementById('custom-doctype-list');
+  const types = DB.customDocTypes || [];
+  if (!types.length) {
+    list.innerHTML = `<div style="font-size:12px;color:var(--ink3);padding:8px 0;">No custom types yet — add one below.</div>`;
+    return;
+  }
+  list.innerHTML = types.map(t => {
+    const count = DB.documents.filter(d => d.docType === t.value).length;
+    return `<div class="custom-doctype-row">
+      <i class="ti ${t.icon}"></i>
+      <span class="cdt-label">${t.label}</span>
+      <span class="cdt-count">${count} doc${count===1?'':'s'}</span>
+      <button class="btn btn-sm btn-danger" style="padding:3px 7px;" onclick="removeCustomDocType('${t.id}')"><i class="ti ti-trash"></i></button>
+    </div>`;
+  }).join('');
+}
+
+function addCustomDocType() {
+  const label = document.getElementById('ndt-label').value.trim();
+  if (!label) { alert('Please enter a name for the new document type.'); return; }
+
+  let value = slugifyDocType(label);
+  // Avoid collisions with built-in or existing custom values
+  const builtIns = ['birth','death','marriage','census','military','immigration','will','land','newspaper','obituary','prayer_card','letter','photo','church','school','medical','legal','other'];
+  const existingValues = (DB.customDocTypes||[]).map(t => t.value);
+  if (builtIns.includes(value) || existingValues.includes(value)) {
+    let n = 2;
+    while (builtIns.includes(`${value}_${n}`) || existingValues.includes(`${value}_${n}`)) n++;
+    value = `${value}_${n}`;
+  }
+
+  DB.customDocTypes.push({ id: genId(), value, label, icon: ndtSelectedIcon });
+  save();
+  refreshCustomDocTypeOptions();
+  renderCustomDocTypeList();
+  document.getElementById('ndt-label').value = '';
+}
+
+function removeCustomDocType(id) {
+  const t = (DB.customDocTypes||[]).find(x => x.id === id);
+  if (!t) return;
+  const count = DB.documents.filter(d => d.docType === t.value).length;
+  const msg = count
+    ? `Delete "${t.label}"? ${count} existing document${count===1?' is':'s are'} tagged with this type — they'll keep showing this type but it will disappear from the dropdown.`
+    : `Delete "${t.label}"?`;
+  if (!confirm(msg)) return;
+  DB.customDocTypes = DB.customDocTypes.filter(x => x.id !== id);
+  save();
+  refreshCustomDocTypeOptions();
+  renderCustomDocTypeList();
+}
+
+// Injects custom types into all relevant <select> elements (Add Document type select + filter dropdown)
+function refreshCustomDocTypeOptions() {
+  const types = DB.customDocTypes || [];
+  const optsHtml = types.map(t => `<option value="${t.value}">${t.label}</option>`).join('');
+
+  const addGroup = document.getElementById('doc-type-custom-group');
+  if (addGroup) {
+    const current = document.getElementById('doc-type-select')?.value;
+    addGroup.innerHTML = optsHtml;
+    addGroup.style.display = types.length ? '' : 'none';
+    if (current && document.getElementById('doc-type-select')) document.getElementById('doc-type-select').value = current;
+  }
+
+  const filterGroup = document.getElementById('doc-filter-custom-group');
+  if (filterGroup) {
+    const current = document.getElementById('doc-type-filter')?.value;
+    filterGroup.innerHTML = optsHtml;
+    filterGroup.style.display = types.length ? '' : 'none';
+    if (current && document.getElementById('doc-type-filter')) document.getElementById('doc-type-filter').value = current;
+  }
 }
 
 // ── CENSUS YEAR COLUMN DEFINITIONS ──────────────────────────────
@@ -4474,7 +4775,7 @@ function renderDocs() {
         const people = (d.peopleIds||[]).map(pid => { const p = DB.people.find(x=>x.id===pid); return p ? fullName(p) : ''; }).filter(Boolean).join(', ');
         return `<tr style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="viewDoc('${d.id}')">
           <td style="padding:10px 12px;font-weight:500;">${d.title}</td>
-          <td style="padding:10px 12px;"><span class="tag tag-document">${d.docType}</span></td>
+          <td style="padding:10px 12px;"><span class="tag tag-document">${docTypeLabel(d.docType)}</span></td>
           <td style="padding:10px 12px;font-family:var(--font-mono);font-size:12px;">${d.date||'—'}</td>
           <td style="padding:10px 12px;font-size:12px;color:var(--ink3);">${people||'—'}</td>
           <td style="padding:10px 12px;font-size:12px;color:var(--ink3);">${d.repository||'—'}</td>
@@ -4566,7 +4867,7 @@ function viewDoc(id) {
     </div>`).join('');
 
   const metaRows = [
-    d.docType   ? ['Type', d.docType.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())] : null,
+    d.docType   ? ['Type', docTypeLabel(d.docType)] : null,
     d.date      ? ['Date', d.date] : null,
     d.place     ? ['Place', d.place] : null,
     d.repository? ['Repository', d.repository] : null,
@@ -4578,11 +4879,29 @@ function viewDoc(id) {
     </div>`).join('');
 
   // File/image preview if stored
-  const filePreview = d.fileData
-    ? (d.fileData.startsWith('data:image')
-        ? `<img src="${d.fileData}" style="max-width:100%;border-radius:var(--radius);margin-bottom:16px;border:1px solid var(--border);">`
-        : `<div style="padding:12px;background:var(--parchment2);border-radius:var(--radius);margin-bottom:16px;font-size:13px;color:var(--ink3);"><i class="ti ti-file"></i> Attached file (${d.fileName||'document'})</div>`)
-    : '';
+  let filePreview = '';
+  if (d.fileData) {
+    if (d.fileData.startsWith('data:image')) {
+      filePreview = `<img src="${d.fileData}" style="max-width:100%;border-radius:var(--radius);margin-bottom:16px;border:1px solid var(--border);">`;
+    } else if (d.fileData.startsWith('data:application/pdf')) {
+      filePreview = `<div style="margin-bottom:16px;">
+        <iframe src="${d.fileData}" style="width:100%;height:420px;border:1px solid var(--border);border-radius:var(--radius);background:#fff;"></iframe>
+        <div style="margin-top:6px;font-size:12px;color:var(--ink3);">
+          <a href="${d.fileData}" download="${d.fileName||'document.pdf'}" style="color:var(--gold);text-decoration:none;"><i class="ti ti-download" style="font-size:11px;"></i> Download PDF</a>
+        </div>
+      </div>`;
+    } else {
+      const fname = d.fileName || 'attachment';
+      filePreview = `<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--parchment2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px;">
+        <i class="ti ti-file" style="font-size:22px;color:var(--sepia);flex-shrink:0;"></i>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:500;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${fname}</div>
+          <div style="font-size:11px;color:var(--ink3);">Attached file</div>
+        </div>
+        <a href="${d.fileData}" download="${fname}" style="color:var(--gold);font-size:12px;text-decoration:none;white-space:nowrap;"><i class="ti ti-download" style="font-size:12px;"></i> Download</a>
+      </div>`;
+    }
+  }
 
   document.getElementById('vdm-body').innerHTML = `
     <div style="padding:20px;">
@@ -4772,6 +5091,7 @@ function viewComm(id) {
   if (!c) return;
 
   document.getElementById('vcm-title').textContent = c.subject || c.type || 'Communication';
+  document.getElementById('vcm-edit-btn').onclick = () => { closeModal('view-comm-modal'); editComm(id); };
   document.getElementById('vcm-delete-btn').onclick = () => {
     if (!confirm('Delete this entry? This cannot be undone.')) return;
     DB.communications = DB.communications.filter(x => x.id !== id);
@@ -4800,6 +5120,50 @@ function viewComm(id) {
   openModal('view-comm-modal');
 }
 
+function editComm(id) {
+  const c = DB.communications.find(x => x.id === id);
+  if (!c) return;
+
+  document.getElementById('ecom-id').value = id;
+  document.getElementById('ecom-type').value = c.type || 'letter';
+  document.getElementById('ecom-date').value = c.date || '';
+  document.getElementById('ecom-from').value = c.from || '';
+  document.getElementById('ecom-to').value = c.to || '';
+  document.getElementById('ecom-subject').value = c.subject || '';
+  document.getElementById('ecom-content').value = c.content || '';
+  document.getElementById('ecom-location').value = c.location || '';
+
+  // Open modal first (populateModalSelects runs via openModal)
+  openModal('edit-comm-modal');
+
+  // Then set selected people after population
+  const sel = document.getElementById('ecom-people');
+  Array.from(sel.options).forEach(opt => {
+    opt.selected = (c.peopleIds||[]).includes(opt.value);
+  });
+}
+
+function saveEditComm() {
+  const id = document.getElementById('ecom-id').value;
+  const c = DB.communications.find(x => x.id === id);
+  if (!c) return;
+
+  const sel = document.getElementById('ecom-people');
+  c.type     = document.getElementById('ecom-type').value;
+  c.date     = document.getElementById('ecom-date').value.trim();
+  c.from     = document.getElementById('ecom-from').value.trim();
+  c.to       = document.getElementById('ecom-to').value.trim();
+  c.subject  = document.getElementById('ecom-subject').value.trim();
+  c.content  = document.getElementById('ecom-content').value.trim();
+  c.location = document.getElementById('ecom-location').value.trim();
+  c.peopleIds = Array.from(sel.selectedOptions).map(o => o.value);
+
+  save();
+  closeModal('edit-comm-modal');
+  renderComms();
+  setTimeout(() => viewComm(id), 80);
+}
+
 // ── SOURCES ──────────────────────────────────────────────────────
 function saveSource() {
   DB.sources.push({
@@ -4826,7 +5190,7 @@ function renderSources() {
     return;
   }
   container.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px;">${DB.sources.map(s => `
-    <div class="card" style="padding:14px 16px;">
+    <div class="card" id="source-card-${s.id}" style="padding:14px 16px;">
       <div style="display:flex;align-items:flex-start;gap:12px;">
         <i class="ti ti-book" style="font-size:20px;color:var(--sepia);margin-top:2px;"></i>
         <div style="flex:1;">
@@ -4902,7 +5266,7 @@ function renderResearch() {
       <div style="display:flex;flex-direction:column;gap:10px;">
         ${arr.map(t => {
           const people = (t.peopleIds||[]).map(pid => { const p = DB.people.find(x=>x.id===pid); return p ? fullName(p) : ''; }).filter(Boolean);
-          return `<div class="card" style="padding:12px 16px;border-left:3px solid ${taskStatusColors[t.status]||'var(--border)'};">
+          return `<div class="card" id="task-card-${t.id}" style="padding:12px 16px;border-left:3px solid ${taskStatusColors[t.status]||'var(--border)'};">
             <div style="display:flex;align-items:flex-start;gap:10px;">
               <div style="flex:1;">
                 <div style="font-weight:500;font-size:14px;">${t.title}</div>
@@ -5076,7 +5440,7 @@ function renderBugs() {
     const pm = BUG_PRIORITY_META[bug.priority] || BUG_PRIORITY_META.medium;
     const date = bug.loggedAt ? new Date(bug.loggedAt).toLocaleDateString() : '';
     const updated = bug.updatedAt && bug.updatedAt !== bug.loggedAt ? ` · updated ${new Date(bug.updatedAt).toLocaleDateString()}` : '';
-    return `<div style="border:1px solid ${sm.border};border-left:4px solid ${sm.border};background:${sm.bg};border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;">
+    return `<div id="bug-card-${bug.id}" style="border:1px solid ${sm.border};border-left:4px solid ${sm.border};background:${sm.bg};border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;">
       <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;">
         <div style="flex:1;min-width:0;">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
@@ -5138,10 +5502,10 @@ function seedInitialBugs() {
   const seed = [
     { type:'bug',     priority:'medium', title:'Gallery person-filter has no onchange handler', panel:'gallery',       status:'open',   steps:'Selecting a person in Gallery filter does nothing. renderGallery() not called on change.', batch:'Session 1' },
     { type:'bug',     priority:'medium', title:'Comm person-filter has no onchange handler',    panel:'communications',status:'open',   steps:'Selecting a person in Correspondence filter does nothing. renderComms() not called on change.', batch:'Session 1' },
-    { type:'bug',     priority:'low',    title:'savePerson override (addPersonFromProfile) may double-fire if savePerson is called multiple times', panel:'add-person', status:'testing', steps:'The _origSavePerson / window._pendingRel pattern can misbehave if the modal is closed and reopened without saving. Needs guard.', batch:'Session 2' },
+    { type:'bug',     priority:'low',    title:'savePerson override (addPersonFromProfile) may double-fire if savePerson is called multiple times', panel:'add-person', status:'fixed', steps:'The _origSavePerson / window._pendingRel pattern can misbehave if the modal is closed and reopened without saving. Needs guard.', resolution:'Removed the function-override pattern entirely; pending-relationship logic now lives directly inside savePerson(), with an _inProgress re-entry guard. Fixed Session 6.', batch:'Session 2' },
     { type:'bug',     priority:'low',    title:'AI scan button in Document modal fires an alert instead of real OCR', panel:'documents', status:'open', steps:'Clicking the AI Scan button shows a placeholder alert. Needs real API call or removal.', batch:'Session 1' },
-    { type:'feature', priority:'high',   title:'Edit Events, Photos, Sources, Comms — no edit modal exists for these', panel:'people', status:'fixed', steps:'Users can add but not edit events, photos, sources, or communications. Only delete is available.', resolution:'editEvent(), editPhoto(), editSource(), editTask() all implemented with full modals. Delete also added to events/tasks.', batch:'Session 1' },
-    { type:'feature', priority:'medium', title:'Document viewer: no preview for PDF/image attachments', panel:'documents', status:'open', steps:'viewDoc() shows metadata but uploaded file attachments are not previewed inline.', batch:'Session 1' },
+    { type:'feature', priority:'high',   title:'Edit Events, Photos, Sources — no edit modal exists for these', panel:'people', status:'fixed', steps:'Users can add but not edit events, photos, or sources. Only delete is available.', resolution:'editEvent(), editPhoto(), editSource(), editTask() all implemented with full modals. Delete also added to events/tasks. (Edit Communications followed separately in Session 6 — see below.)', batch:'Session 1' },
+    { type:'feature', priority:'medium', title:'Document viewer: no preview for PDF/image attachments', panel:'documents', status:'fixed', steps:'viewDoc() shows metadata but uploaded file attachments are not previewed inline.', resolution:'Images show inline, PDFs render in iframe with download link, other files show download button. Implemented Session 6.', batch:'Session 1' },
     { type:'ux',      priority:'high',   title:'Biography/Family Group Sheet report: prompt() is not mobile-friendly', panel:'reports', status:'fixed', steps:'Using window.prompt() for person/couple picker breaks on mobile Safari. Should be replaced with a modal picker.', resolution:'Replaced with openReportPicker() modal — list of people/couples with select element, confirm button.', batch:'Session 1' },
     { type:'ux',      priority:'medium', title:'Census table too wide for mobile even with horizontal scroll', panel:'documents', status:'testing', steps:'The census household table scrolls horizontally on mobile but minimum column widths are very tight.', batch:'Session 2' },
     { type:'ux',      priority:'low',    title:'Add Person modal: Family Builder selects not populated on first open', panel:'add-person', status:'open', steps:'If DB.people is empty when modal first opens, existing-person dropdowns are blank even after people are added later.', batch:'Session 2' },
@@ -5151,13 +5515,17 @@ function seedInitialBugs() {
     // Session 4 — Universal Search + External Sites
     { type:'feature', priority:'high',   title:'Universal search: ⌘K / magnifier opens spotlight-style overlay', panel:'search', status:'fixed', steps:'Searches people, events, documents, photos, comms, sources, tasks, FAN, dev log. Keyboard nav (↑↓↵ESC). Highlight matches.', resolution:'Implemented — openUniversalSearch(), runUniversalSearch(), usearchKeyNav()', batch:'Session 4' },
     { type:'feature', priority:'high',   title:'External sites panel: search Ancestry, FamilySearch, FindAGrave etc.', panel:'search', status:'fixed', steps:'22 external sites across 6 groups. Pre-fills name+dates from person record. Opens in new tab.', resolution:'Implemented — toggleExtPanel(), renderExtLinks(), openExtPanelForPerson()', batch:'Session 4' },
-    { type:'bug',     priority:'medium', title:'Universal search: sources and tasks navigate to panel but do not highlight the specific item', panel:'search', status:'open', steps:'Clicking a source/task result navigates to the correct panel but does not scroll to or highlight the specific matching item.', batch:'Session 4' },
+    { type:'bug',     priority:'medium', title:'Universal search: sources and tasks navigate to panel but do not highlight the specific item', panel:'search', status:'fixed', steps:'Clicking a source/task result navigates to the correct panel but does not scroll to or highlight the specific matching item.', resolution:'Added id attributes to source/task/bug cards and a highlightAndScroll() helper that scrolls the matching card into view with a temporary gold outline/glow. Also clears panel-local status/type filters so the target item is guaranteed to be in the DOM. Implemented Session 6.', batch:'Session 4' },
     { type:'ux',      priority:'low',    title:'External sites panel: overlaps content on narrow tablets (768–900px)', panel:'search', status:'open', steps:'The 340px right-side panel overlaps content on tablets. Should either overlay with backdrop or be narrower.', batch:'Session 4' },
-    { type:'feature', priority:'medium', title:'Universal search: filter chips (People only / Documents only / etc.)', panel:'search', status:'open', steps:'Add type-filter tabs or chips below search input to narrow results to one entity type.', batch:'Session 4' },
+    { type:'feature', priority:'medium', title:'Universal search: filter chips (People only / Documents only / etc.)', panel:'search', status:'fixed', steps:'Add type-filter tabs or chips below search input to narrow results to one entity type.', resolution:'Added horizontal chip row below search input (All/People/Events/Docs/Photos/Correspondence/Sources/Tasks/FAN/Dev Log). Selecting a chip filters results to that type and raises the per-section result cap. Implemented Session 6.', batch:'Session 4' },
     { type:'feature', priority:'low',    title:'External sites: remember last selected person across panel opens', panel:'search', status:'fixed', steps:'ext-person-select resets to blank each time the panel opens. Should remember the last used person.', resolution:'dataset.lastPid stored on select element; restored on next open.', batch:'Session 4' },
+    // Session 6
+    { type:'feature', priority:'medium', title:'Communications: no edit modal exists, only delete', panel:'communications', status:'fixed', steps:'Users can log correspondence and delete entries but cannot edit an existing entry without deleting and re-creating it.', resolution:'Added edit-comm-modal, editComm(id), saveEditComm(). Edit button added to view-comm-modal alongside Delete.', batch:'Session 6' },
+    { type:'feature', priority:'high',   title:'Custom document types — user cannot add new document types without code changes', panel:'documents', status:'fixed', steps:'Document Type dropdown is a fixed list. Adding a new type (e.g. funeral program, baptismal record) required asking Claude to edit the HTML.', resolution:'Added DB.customDocTypes (persisted), a "Manage document types" link in the Add Document modal opening manage-doctypes-modal, an icon picker, and refreshCustomDocTypeOptions() which injects custom types into both the Add Document select and the Documents panel filter on init and after any change. Also added two new built-in types (Obituary, Prayer Card / Memorial Card) with their own dynamic form fields.', batch:'Session 6' },
+    { type:'bug',     priority:'low',    title:'seedInitialBugs() silently erases resolution text on every seeded entry', panel:'bugs', status:'fixed', steps:"seed.forEach spread the per-entry object before setting resolution:'' unconditionally, so the trailing key always won and wiped out any resolution already written in the seed data. Only affects a fresh/empty archive on first load.", resolution:"Reordered the spread so resolution:'' is the default and gets overridden by an entry-specific resolution if one is present.", batch:'Session 6' },
   ];
   seed.forEach(s => {
-    DB.bugs.push({ id: genId(), ...s, loggedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), resolution: '' });
+    DB.bugs.push({ id: genId(), resolution: '', ...s, loggedAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
   });
   save();
 }
@@ -6182,6 +6550,8 @@ function refreshPersonSelects() {
 // ══════════════════════════════════════════════════════════════════
 let usearchSelectedIdx = -1;
 let usearchCurrentItems = []; // flat list of rendered result items for keyboard nav
+let usearchActiveType = 'all'; // 'all' | 'people' | 'events' | 'documents' | 'photos' | 'comms' | 'sources' | 'tasks' | 'fans' | 'bugs'
+let usearchLastRaw = '';
 
 function openUniversalSearch() {
   const bd = document.getElementById('usearch-backdrop');
@@ -6190,8 +6560,22 @@ function openUniversalSearch() {
   inp.value = '';
   inp.focus();
   usearchSelectedIdx = -1;
+  usearchActiveType = 'all';
+  usearchLastRaw = '';
+  document.querySelectorAll('.usearch-chip').forEach(c => c.classList.toggle('active', c.dataset.type === 'all'));
   document.getElementById('usearch-results').innerHTML = renderUsearchLanding();
   document.getElementById('usearch-count').textContent = '';
+}
+
+function setUsearchType(type, btn) {
+  usearchActiveType = type;
+  document.querySelectorAll('.usearch-chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  if (usearchLastRaw) {
+    runUniversalSearch(usearchLastRaw);
+  } else {
+    document.getElementById('usearch-input').focus();
+  }
 }
 
 function closeUniversalSearch(e) {
@@ -6256,6 +6640,7 @@ function highlight(text, q) {
 }
 
 function runUniversalSearch(raw) {
+  usearchLastRaw = raw;
   const q = raw.trim().toLowerCase();
   const countEl = document.getElementById('usearch-count');
   if (!q) {
@@ -6329,12 +6714,22 @@ function runUniversalSearch(raw) {
     if (hay.includes(q)) results.bugs.push(b);
   });
 
+  // Apply active type-filter chip — clear out sections that don't match
+  if (usearchActiveType !== 'all') {
+    Object.keys(results).forEach(key => {
+      if (key !== usearchActiveType) results[key] = [];
+    });
+  }
+  // When a single type is filtered, show more results per section
+  const cap = n => usearchActiveType === 'all' ? n : 50;
+
   // Build result HTML
   const total = Object.values(results).reduce((n,a)=>n+a.length, 0);
   countEl.textContent = total ? `${total} result${total>1?'s':''}` : '';
 
   if (!total) {
-    document.getElementById('usearch-results').innerHTML = `<div class="usearch-empty"><i class="ti ti-search-off" style="font-size:36px;display:block;margin-bottom:8px;"></i>No results for "<strong>${raw}</strong>"</div>`;
+    const typeLabel = usearchActiveType !== 'all' ? ` in ${document.querySelector('.usearch-chip.active')?.textContent.trim() || usearchActiveType}` : '';
+    document.getElementById('usearch-results').innerHTML = `<div class="usearch-empty"><i class="ti ti-search-off" style="font-size:36px;display:block;margin-bottom:8px;"></i>No results for "<strong>${raw}</strong>"${typeLabel}</div>`;
     usearchCurrentItems = [];
     return;
   }
@@ -6343,7 +6738,7 @@ function runUniversalSearch(raw) {
 
   if (results.people.length) {
     html += `<p class="usearch-group-label">People (${results.people.length})</p>`;
-    html += results.people.slice(0,8).map(p => {
+    html += results.people.slice(0,cap(8)).map(p => {
       const initHtml = p.photo ? `<img src="${p.photo}">` : `<span style="font-family:var(--font-serif);font-size:13px;">${initials(p)}</span>`;
       const sub = [p.birthDate&&`b. ${p.birthDate}`, p.birthPlace, p.deathDate&&`d. ${p.deathDate}`].filter(Boolean).join(' · ') || p.occupation || '';
       return `<div class="usearch-item" data-action="person:${p.id}">
@@ -6359,7 +6754,7 @@ function runUniversalSearch(raw) {
 
   if (results.events.length) {
     html += `<p class="usearch-group-label">Events (${results.events.length})</p>`;
-    html += results.events.slice(0,6).map(ev => `<div class="usearch-item" data-action="person:${ev.personId}">
+    html += results.events.slice(0,cap(6)).map(ev => `<div class="usearch-item" data-action="person:${ev.personId}">
       <div class="usearch-item-icon"><i class="ti ti-calendar-event"></i></div>
       <div class="usearch-item-main">
         <div class="usearch-item-title">${highlight(ev.type,raw)} — ${highlight(ev.date||'',raw)}</div>
@@ -6371,11 +6766,11 @@ function runUniversalSearch(raw) {
 
   if (results.documents.length) {
     html += `<p class="usearch-group-label">Documents (${results.documents.length})</p>`;
-    html += results.documents.slice(0,6).map(d => `<div class="usearch-item" data-action="doc:${d.id}">
+    html += results.documents.slice(0,cap(6)).map(d => `<div class="usearch-item" data-action="doc:${d.id}">
       <div class="usearch-item-icon"><i class="ti ti-file-text"></i></div>
       <div class="usearch-item-main">
         <div class="usearch-item-title">${highlight(d.title||'Untitled',raw)}</div>
-        <div class="usearch-item-sub">${d.docType||''} · ${highlight(d.date||'',raw)} · ${highlight(d.place||'',raw)}</div>
+        <div class="usearch-item-sub">${docTypeLabel(d.docType)} · ${highlight(d.date||'',raw)} · ${highlight(d.place||'',raw)}</div>
       </div>
       <span class="usearch-item-badge">Document</span>
     </div>`).join('');
@@ -6383,7 +6778,7 @@ function runUniversalSearch(raw) {
 
   if (results.photos.length) {
     html += `<p class="usearch-group-label">Photos (${results.photos.length})</p>`;
-    html += results.photos.slice(0,4).map(ph => `<div class="usearch-item" data-action="photo:${ph.id}">
+    html += results.photos.slice(0,cap(4)).map(ph => `<div class="usearch-item" data-action="photo:${ph.id}">
       <div class="usearch-item-icon">${ph.dataUrl?`<img src="${ph.dataUrl}">`:'<i class="ti ti-photo"></i>'}</div>
       <div class="usearch-item-main">
         <div class="usearch-item-title">${highlight(ph.caption||'Untitled photo',raw)}</div>
@@ -6395,7 +6790,7 @@ function runUniversalSearch(raw) {
 
   if (results.comms.length) {
     html += `<p class="usearch-group-label">Correspondence (${results.comms.length})</p>`;
-    html += results.comms.slice(0,4).map(c => `<div class="usearch-item" data-action="comm:${c.id}">
+    html += results.comms.slice(0,cap(4)).map(c => `<div class="usearch-item" data-action="comm:${c.id}">
       <div class="usearch-item-icon"><i class="ti ti-mail"></i></div>
       <div class="usearch-item-main">
         <div class="usearch-item-title">${highlight(c.subject||c.type,raw)}</div>
@@ -6407,7 +6802,7 @@ function runUniversalSearch(raw) {
 
   if (results.sources.length) {
     html += `<p class="usearch-group-label">Sources (${results.sources.length})</p>`;
-    html += results.sources.slice(0,4).map(s => `<div class="usearch-item" data-action="source:${s.id}">
+    html += results.sources.slice(0,cap(4)).map(s => `<div class="usearch-item" data-action="source:${s.id}">
       <div class="usearch-item-icon"><i class="ti ti-book"></i></div>
       <div class="usearch-item-main">
         <div class="usearch-item-title">${highlight(s.title||'Untitled',raw)}</div>
@@ -6419,7 +6814,7 @@ function runUniversalSearch(raw) {
 
   if (results.tasks.length) {
     html += `<p class="usearch-group-label">Research Tasks (${results.tasks.length})</p>`;
-    html += results.tasks.slice(0,3).map(t => `<div class="usearch-item" data-action="panel:research">
+    html += results.tasks.slice(0,cap(3)).map(t => `<div class="usearch-item" data-action="task:${t.id}">
       <div class="usearch-item-icon"><i class="ti ti-clipboard-list"></i></div>
       <div class="usearch-item-main">
         <div class="usearch-item-title">${highlight(t.title,raw)}</div>
@@ -6431,7 +6826,7 @@ function runUniversalSearch(raw) {
 
   if (results.fans.length) {
     html += `<p class="usearch-group-label">FAN Connections (${results.fans.length})</p>`;
-    html += results.fans.slice(0,4).map(f => `<div class="usearch-item" data-action="person:${f.person1Id}">
+    html += results.fans.slice(0,cap(4)).map(f => `<div class="usearch-item" data-action="person:${f.person1Id}">
       <div class="usearch-item-icon"><i class="ti ti-network"></i></div>
       <div class="usearch-item-main">
         <div class="usearch-item-title">${f._p1?fullName(f._p1):'?'} ↔ ${f._p2?fullName(f._p2):'?'}</div>
@@ -6443,7 +6838,7 @@ function runUniversalSearch(raw) {
 
   if (results.bugs.length) {
     html += `<p class="usearch-group-label">Dev Log (${results.bugs.length})</p>`;
-    html += results.bugs.slice(0,3).map(b => `<div class="usearch-item" data-action="panel:bugs">
+    html += results.bugs.slice(0,cap(3)).map(b => `<div class="usearch-item" data-action="bug:${b.id}">
       <div class="usearch-item-icon"><i class="ti ti-bug"></i></div>
       <div class="usearch-item-main">
         <div class="usearch-item-title">${highlight(b.title,raw)}</div>
@@ -6463,6 +6858,30 @@ function runUniversalSearch(raw) {
   usearchSelectedIdx = -1;
 }
 
+function highlightAndScroll(elId, attempts) {
+  attempts = attempts || 0;
+  const el = document.getElementById(elId);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const prevTransition = el.style.transition;
+    const prevOutline = el.style.outline;
+    const prevOutlineOffset = el.style.outlineOffset;
+    el.style.transition = 'outline-color .3s ease, box-shadow .3s ease';
+    el.style.outline = '2px solid var(--gold)';
+    el.style.outlineOffset = '2px';
+    el.style.boxShadow = '0 0 0 4px rgba(184,134,11,0.18)';
+    setTimeout(() => {
+      el.style.outline = prevOutline;
+      el.style.outlineOffset = prevOutlineOffset;
+      el.style.boxShadow = '';
+      el.style.transition = prevTransition;
+    }, 2200);
+  } else if (attempts < 10) {
+    // Element not yet rendered (e.g. panel render still pending) — retry briefly
+    setTimeout(() => highlightAndScroll(elId, attempts + 1), 60);
+  }
+}
+
 function usearchNavigate(action) {
   if (!action) return;
   document.getElementById('usearch-backdrop').classList.remove('open');
@@ -6471,7 +6890,32 @@ function usearchNavigate(action) {
   if (type === 'doc')     { setTimeout(() => viewDoc(id), 80); }
   if (type === 'photo')   { setTimeout(() => viewPhoto(id), 80); }
   if (type === 'comm')    { setTimeout(() => viewComm(id), 80); }
-  if (type === 'source')  { setTimeout(() => switchPanel('sources'), 80); }
+  if (type === 'source')  {
+    setTimeout(() => {
+      switchPanel('sources');
+      setTimeout(() => highlightAndScroll(`source-card-${id}`), 80);
+    }, 80);
+  }
+  if (type === 'task')    {
+    setTimeout(() => {
+      // Clear status filter so the task is guaranteed visible
+      const f = document.getElementById('research-status-filter');
+      if (f) { f.value = ''; }
+      switchPanel('research');
+      setTimeout(() => highlightAndScroll(`task-card-${id}`), 80);
+    }, 80);
+  }
+  if (type === 'bug')     {
+    setTimeout(() => {
+      // Clear status/type filters so the bug is guaranteed visible
+      const sf = document.getElementById('bug-status-filter');
+      const tf = document.getElementById('bug-type-filter');
+      if (sf) sf.value = '';
+      if (tf) tf.value = '';
+      switchPanel('bugs');
+      setTimeout(() => highlightAndScroll(`bug-card-${id}`), 80);
+    }, 80);
+  }
   if (type === 'panel')   { setTimeout(() => switchPanel(id), 80); }
 }
 
@@ -6792,6 +7236,7 @@ updateSidebarStats();
 updateTreeRootSelect();
 refreshFamilyLines();
 refreshPersonSelects();
+refreshCustomDocTypeOptions();
 loadSettings();
 renderDashRecent();
 renderDashTasks();
@@ -6982,7 +7427,7 @@ function generateReport(type) {
       ${person.bio?`<h2>Biography</h2><p style="font-size:14px;line-height:1.8;">${person.bio}</p>`:''}
       ${rels.length?`<h2>Family Relationships</h2>${rels.map(r=>{const oid=r.person1Id===person.id?r.person2Id:r.person1Id;const op=DB.people.find(x=>x.id===oid);return`<div class="field-row"><span class="field-label">${relTypeLabel(r.type,r.person1Id===person.id)}:</span><span>${op?fullName(op):'Unknown'}</span></div>`;}).join('')}`:''}
       ${personEvents.length?`<h2>Life Events</h2>${personEvents.map(ev=>`<div class="timeline-entry"><span class="tl-year">${ev.date?.split(' ').pop()||'?'}</span><span class="event-type">${ev.type.replace(/_/g,' ')}</span><span>${[ev.place,ev.desc].filter(Boolean).join(' — ')}</span></div>`).join('')}`:''}
-      ${personDocs.length?`<h2>Associated Documents (${personDocs.length})</h2><table><thead><tr><th>Title</th><th>Type</th><th>Date</th><th>Repository</th></tr></thead><tbody>${personDocs.map(d=>`<tr><td>${d.title}</td><td>${d.docType}</td><td>${d.date||'—'}</td><td>${d.repository||'—'}</td></tr>`).join('')}</tbody></table>`:''}
+      ${personDocs.length?`<h2>Associated Documents (${personDocs.length})</h2><table><thead><tr><th>Title</th><th>Type</th><th>Date</th><th>Repository</th></tr></thead><tbody>${personDocs.map(d=>`<tr><td>${d.title}</td><td>${docTypeLabel(d.docType)}</td><td>${d.date||'—'}</td><td>${d.repository||'—'}</td></tr>`).join('')}</tbody></table>`:''}
       <div class="footer"><span>${fullName(person)}</span><span>Biography</span><span>${today}</span></div>
       </body></html>`;
         const win = window.open('','_blank'); win.document.write(html); win.document.close();
@@ -7530,6 +7975,18 @@ document.getElementById('rel-type')?.addEventListener('change', function() {
         oninput="runUniversalSearch(this.value)"
         onkeydown="usearchKeyNav(event)" autocomplete="off" spellcheck="false">
       <span id="usearch-kbd">ESC to close</span>
+    </div>
+    <div id="usearch-chips">
+      <button class="usearch-chip active" data-type="all" onclick="setUsearchType('all',this)">All</button>
+      <button class="usearch-chip" data-type="people" onclick="setUsearchType('people',this)"><i class="ti ti-users"></i> People</button>
+      <button class="usearch-chip" data-type="events" onclick="setUsearchType('events',this)"><i class="ti ti-calendar-event"></i> Events</button>
+      <button class="usearch-chip" data-type="documents" onclick="setUsearchType('documents',this)"><i class="ti ti-file-text"></i> Docs</button>
+      <button class="usearch-chip" data-type="photos" onclick="setUsearchType('photos',this)"><i class="ti ti-photo"></i> Photos</button>
+      <button class="usearch-chip" data-type="comms" onclick="setUsearchType('comms',this)"><i class="ti ti-mail"></i> Correspondence</button>
+      <button class="usearch-chip" data-type="sources" onclick="setUsearchType('sources',this)"><i class="ti ti-book"></i> Sources</button>
+      <button class="usearch-chip" data-type="tasks" onclick="setUsearchType('tasks',this)"><i class="ti ti-clipboard-list"></i> Tasks</button>
+      <button class="usearch-chip" data-type="fans" onclick="setUsearchType('fans',this)"><i class="ti ti-network"></i> FAN</button>
+      <button class="usearch-chip" data-type="bugs" onclick="setUsearchType('bugs',this)"><i class="ti ti-bug"></i> Dev Log</button>
     </div>
     <div id="usearch-results"></div>
     <div id="usearch-footer">
