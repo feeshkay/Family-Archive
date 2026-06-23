@@ -200,6 +200,25 @@
   .custom-doctype-row .ti:first-child { font-size: 16px; color: var(--sepia); flex-shrink: 0; }
   .custom-doctype-row .cdt-label { flex: 1; font-size: 13px; color: var(--ink); }
   .custom-doctype-row .cdt-count { font-size: 11px; color: var(--ink3); flex-shrink: 0; }
+
+  /* ── PLACES AUTOCOMPLETE ── */
+  .place-ac-wrap { position: relative; }
+  .place-ac-dropdown {
+    display: none;
+    position: absolute; top: calc(100% + 2px); left: 0; right: 0;
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: var(--radius); box-shadow: var(--shadow2);
+    max-height: 220px; overflow-y: auto; z-index: 60;
+  }
+  .place-ac-dropdown.open { display: block; }
+  .place-ac-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; font-size: 13px; color: var(--ink);
+    cursor: pointer; border-bottom: 1px solid var(--border);
+  }
+  .place-ac-item:last-child { border-bottom: none; }
+  .place-ac-item:hover { background: var(--parchment2); }
+
   #usearch-results {
     overflow-y: auto; flex: 1;
     padding: 8px 0;
@@ -1926,10 +1945,18 @@
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">People Mentioned</label>
-        <select class="form-select" id="doc-people" multiple style="height:80px;">
+        <label class="form-label">People Mentioned (Confirmed)</label>
+        <select class="form-select" id="doc-people" multiple style="height:70px;">
         </select>
         <div class="text-sm text-muted mt-8">Hold Ctrl/Cmd to select multiple people</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="display:flex;align-items:center;gap:5px;">
+          <i class="ti ti-help-circle" style="font-size:13px;color:var(--gold);"></i> Maybe This Person? (Unconfirmed)
+        </label>
+        <select class="form-select" id="doc-people-maybe" multiple style="height:60px;">
+        </select>
+        <div class="text-sm text-muted mt-8">For names you suspect but can't yet confirm — shows a "maybe" marker on their profile until you move them up or remove them</div>
       </div>
       <div class="form-group">
         <label class="form-label">Repository / Archive</label>
@@ -2012,10 +2039,18 @@
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">People Tagged</label>
-        <select class="form-select" id="photo-people" multiple style="height:80px;">
+        <label class="form-label">People Tagged (Confirmed)</label>
+        <select class="form-select" id="photo-people" multiple style="height:70px;">
         </select>
-        <div class="text-sm text-muted mt-8">Hold Ctrl/Cmd to select multiple</div>
+        <div class="text-sm text-muted mt-8">Hold Ctrl/Cmd to select multiple — you can also click directly on faces in the photo viewer after saving</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="display:flex;align-items:center;gap:5px;">
+          <i class="ti ti-help-circle" style="font-size:13px;color:var(--gold);"></i> Maybe This Person? (Unconfirmed)
+        </label>
+        <select class="form-select" id="photo-people-maybe" multiple style="height:60px;">
+        </select>
+        <div class="text-sm text-muted mt-8">For faces you suspect but can't yet confirm</div>
       </div>
       <div class="form-group">
         <label class="form-label">Source / Provenance</label>
@@ -3061,6 +3096,7 @@ let DB = {
   relationships: [],
   familyLines: [],
   customDocTypes: [], // user-added document types: { id, value, label, icon }
+  places: [],         // Places library: { id, label, street, city, county, state, country, lat, lng }
   settings: {
     archiveName: 'My Family Archive',
     researcher: '',
@@ -3097,13 +3133,23 @@ function load() {
       const parsed = JSON.parse(raw);
       DB = Object.assign(DB, parsed);
       // ensure arrays exist
-      ['people','events','documents','photos','communications','sources','tasks','relationships','familyLines','fans','bugs','customDocTypes']
+      ['people','events','documents','photos','communications','sources','tasks','relationships','familyLines','fans','bugs','customDocTypes','places']
         .forEach(k => { if (!Array.isArray(DB[k])) DB[k] = []; });
       if (!DB.factConfidence || typeof DB.factConfidence !== 'object') DB.factConfidence = {};
       DB.settings = Object.assign(DB.settings, parsed.settings || {});
+      // Backward-compat: older photos/documents may not have these fields yet
+      DB.photos.forEach(ph => {
+        if (!Array.isArray(ph.peopleIds)) ph.peopleIds = [];
+        if (!Array.isArray(ph.unconfirmedPeopleIds)) ph.unconfirmedPeopleIds = [];
+        if (!Array.isArray(ph.faceTags)) ph.faceTags = [];
+      });
+      DB.documents.forEach(d => {
+        if (!Array.isArray(d.peopleIds)) d.peopleIds = [];
+        if (!Array.isArray(d.unconfirmedPeopleIds)) d.unconfirmedPeopleIds = [];
+      });
       // find max id
       const allIds = [...DB.people, ...DB.events, ...DB.documents, ...DB.photos,
-        ...DB.communications, ...DB.sources, ...DB.tasks, ...DB.relationships, ...DB.familyLines]
+        ...DB.communications, ...DB.sources, ...DB.tasks, ...DB.relationships, ...DB.familyLines, ...DB.places]
         .map(x => parseInt((x.id||'').replace('fa_','')) || 0);
       if (allIds.length) nextId = Math.max(...allIds) + 1;
     }
@@ -3185,6 +3231,178 @@ function personAge(p) {
   return dy - by;
 }
 
+// Extracts a 4-digit year from any free-text date string, including
+// "circa 1920", "abt. 1955", "12 Aug 1923", "1940s", etc.
+function extractYear(dateStr) {
+  if (!dateStr) return null;
+  const m = String(dateStr).match(/(1[5-9]\d{2}|20\d{2})/);
+  return m ? parseInt(m[1]) : null;
+}
+
+// True if a date string carries its own "this is approximate" language,
+// so callers can show a ~ or "est." marker even without a separate confidence field.
+function isApproxDateString(dateStr) {
+  if (!dateStr) return false;
+  return /\b(circa|c\.|ca\.?|abt\.?|about|est\.?|estimated|approx\.?|approximately|\d{4}s)\b/i.test(dateStr);
+}
+
+// Age of a person at the time of a given event/photo/document date.
+// Returns null if either the person's birth year or the target date's year is unknown.
+// approxOut, if passed an object, gets an `approx` boolean set on it indicating
+// whether the result should be displayed with a "~" (either date was approximate,
+// or the dates are too close to be sure of the order).
+function ageAtDate(person, dateStr, approxOut) {
+  if (!person || !person.birthDate || !dateStr) return null;
+  const by = extractYear(person.birthDate);
+  const ey = extractYear(dateStr);
+  if (!by || !ey) return null;
+  const age = ey - by;
+  if (age < 0 || age > 130) return null; // sanity guard against bad data
+  if (approxOut) {
+    approxOut.approx = isApproxDateString(person.birthDate) || isApproxDateString(dateStr);
+  }
+  return age;
+}
+
+// Formats an age for display with a leading ~ when approximate.
+function formatAge(age, approx) {
+  if (age === null || age === undefined) return '';
+  return approx ? `~${age}` : `${age}`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ── PLACES LIBRARY ───────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+// A Place is: { id, label, street, city, county, state, country, lat, lng, addedAt }
+// `label` is the full display string built from the structured fields, and is
+// what gets stored on people/events/photos/documents (so old plain-text data
+// and new Place-linked data look identical at rest — just strings — but new
+// entries can be matched back to a canonical Place by exact label match).
+
+function buildPlaceLabel(parts) {
+  return [parts.street, parts.city, parts.county, parts.state, parts.country].filter(Boolean).join(', ');
+}
+
+function findPlaceByLabel(label) {
+  if (!label) return null;
+  const norm = label.trim().toLowerCase();
+  return (DB.places||[]).find(pl => pl.label.trim().toLowerCase() === norm) || null;
+}
+
+// Creates a Place from structured fields if one with this exact label doesn't
+// already exist; returns the existing or newly-created Place either way.
+function getOrCreatePlace(parts) {
+  const label = buildPlaceLabel(parts);
+  if (!label) return null;
+  const existing = findPlaceByLabel(label);
+  if (existing) return existing;
+  const place = {
+    id: genId(),
+    label,
+    street: parts.street || '',
+    city: parts.city || '',
+    county: parts.county || '',
+    state: parts.state || '',
+    country: parts.country || '',
+    lat: parts.lat ?? null,
+    lng: parts.lng ?? null,
+    addedAt: new Date().toISOString()
+  };
+  DB.places.push(place);
+  return place;
+}
+
+// Plain-text fallback: if a typed string exactly matches a saved Place's label,
+// treat it as that Place (no new Place created). Otherwise leave it as free text —
+// we never force structured entry, per K's "gradual conversion" preference.
+function resolvePlaceText(text) {
+  if (!text) return null;
+  return findPlaceByLabel(text);
+}
+
+// ── Autocomplete attachment ──────────────────────────────────────
+// Attaches a lightweight dropdown of matching saved Places under any text input.
+// Call once per input after the DOM exists, e.g. attachPlaceAutocomplete('doc-place').
+let placeAutocompleteActiveInput = null;
+
+function attachPlaceAutocomplete(inputId) {
+  const input = document.getElementById(inputId);
+  if (!input || input.dataset.placeAutocompleteAttached) return;
+  input.dataset.placeAutocompleteAttached = '1';
+  input.setAttribute('autocomplete', 'off');
+
+  // Wrap input in a positioned container so the dropdown can anchor to it,
+  // unless it's already wrapped (avoid double-wrapping on repeated calls).
+  let wrap = input.closest('.place-ac-wrap');
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.className = 'place-ac-wrap';
+    wrap.style.position = 'relative';
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+  }
+
+  const dropdown = document.createElement('div');
+  dropdown.className = 'place-ac-dropdown';
+  wrap.appendChild(dropdown);
+
+  function closeDropdown() {
+    dropdown.innerHTML = '';
+    dropdown.classList.remove('open');
+    if (placeAutocompleteActiveInput === input) placeAutocompleteActiveInput = null;
+  }
+
+  function showMatches() {
+    const q = input.value.trim().toLowerCase();
+    if (!q) { closeDropdown(); return; }
+    const matches = (DB.places||[])
+      .filter(pl => pl.label.toLowerCase().includes(q))
+      .slice(0, 8);
+    if (!matches.length) { closeDropdown(); return; }
+    placeAutocompleteActiveInput = input;
+    dropdown.innerHTML = matches.map(pl => `
+      <div class="place-ac-item" onmousedown="event.preventDefault();selectPlaceForInput('${inputId}','${pl.id}')">
+        <i class="ti ti-map-pin" style="font-size:12px;color:var(--sepia);flex-shrink:0;"></i>
+        <span>${pl.label}</span>
+      </div>`).join('');
+    dropdown.classList.add('open');
+  }
+
+  input.addEventListener('input', showMatches);
+  input.addEventListener('focus', showMatches);
+  input.addEventListener('blur', () => setTimeout(closeDropdown, 120));
+}
+
+function selectPlaceForInput(inputId, placeId) {
+  const place = (DB.places||[]).find(p => p.id === placeId);
+  const input = document.getElementById(inputId);
+  if (!place || !input) return;
+  input.value = place.label;
+  input.dataset.placeId = place.id;
+  const wrap = input.closest('.place-ac-wrap');
+  const dropdown = wrap?.querySelector('.place-ac-dropdown');
+  if (dropdown) { dropdown.innerHTML = ''; dropdown.classList.remove('open'); }
+  input.focus();
+}
+
+// Call on every relevant text input once the DOM is ready (see INIT section)
+function initAllPlaceAutocompletes() {
+  ['ap-birthplace','ap-deathplace','ev-place','doc-place','photo-location','eed-place','eph-location']
+    .forEach(attachPlaceAutocomplete);
+}
+
+// Registers a plain free-text place string into the Places library if it
+// isn't already there (organic growth — K never has to "set up" Places ahead
+// of time; typing the same text twice automatically becomes reusable).
+function touchPlace(text) {
+  if (!text || !text.trim()) return;
+  const existing = findPlaceByLabel(text);
+  if (existing) return existing;
+  const place = { id: genId(), label: text.trim(), street:'', city:'', county:'', state:'', country:'', lat:null, lng:null, addedAt: new Date().toISOString() };
+  DB.places.push(place);
+  return place;
+}
+
 function savePerson() {
   // Guard against re-entry (e.g. double-click or multiple bindings)
   if (savePerson._inProgress) return;
@@ -3222,6 +3440,8 @@ function savePerson() {
   if (previewImg) p.photo = previewImg.src;
 
   DB.people.push(p);
+  touchPlace(p.birthPlace);
+  touchPlace(p.deathPlace);
 
   // Save fact confidence
   const birthConf = document.getElementById('ap-birth-conf').value;
@@ -4169,6 +4389,7 @@ function saveEvent() {
     addedAt: new Date().toISOString()
   };
   DB.events.push(ev);
+  touchPlace(ev.place);
   save();
   closeModal('add-event-modal');
   renderTimeline();
@@ -4680,6 +4901,8 @@ function saveDocument() {
   });
   const peopleSelect = document.getElementById('doc-people');
   const peopleIds = Array.from(peopleSelect.selectedOptions).map(o => o.value);
+  const maybeSelect = document.getElementById('doc-people-maybe');
+  const unconfirmedPeopleIds = maybeSelect ? Array.from(maybeSelect.selectedOptions).map(o => o.value).filter(id => !peopleIds.includes(id)) : [];
 
   const doc = {
     id: genId(),
@@ -4688,6 +4911,7 @@ function saveDocument() {
     date: document.getElementById('doc-date').value.trim(),
     place: document.getElementById('doc-place').value.trim(),
     peopleIds,
+    unconfirmedPeopleIds,
     repository: document.getElementById('doc-repository').value.trim(),
     reference: document.getElementById('doc-reference').value.trim(),
     url: document.getElementById('doc-url').value.trim(),
@@ -4700,6 +4924,7 @@ function saveDocument() {
   if (filePreview && filePreview.src) doc.fileData = filePreview.src;
 
   DB.documents.push(doc);
+  touchPlace(doc.place);
   save();
   closeModal('add-document-modal');
   renderDocs();
@@ -4837,6 +5062,7 @@ function saveDocForm() {
     date: (document.getElementById('dform-date')||{}).value || '',
     place: '',
     peopleIds: [],
+    unconfirmedPeopleIds: [],
     repository: (document.getElementById('dform-repo')||{}).value || '',
     notes: (document.getElementById('dform-notes')||{}).value || '',
     formFields,
