@@ -126,6 +126,19 @@
   }
   .icon-btn:hover { background: rgba(255,255,255,0.1); }
 
+  /* ── SAVE ERROR BANNER ── */
+  #save-error-banner {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+    display: none; align-items: center; gap: 10px;
+    background: #7a1f1f; color: #fff; padding: 12px 18px;
+    font-size: 13px; line-height: 1.4; box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  }
+  #save-error-banner.show { display: flex; }
+  #save-error-banner .ti-alert-triangle { font-size: 18px; flex-shrink: 0; }
+  #save-error-banner span { flex: 1; }
+  #save-error-banner button { background: none; border: none; color: #fff; cursor: pointer; font-size: 16px; flex-shrink: 0; opacity: .8; }
+  #save-error-banner button:hover { opacity: 1; }
+
   /* ── UNIVERSAL SEARCH ── */
   #usearch-backdrop {
     position: fixed; inset: 0; z-index: 2000;
@@ -200,6 +213,45 @@
   .custom-doctype-row .ti:first-child { font-size: 16px; color: var(--sepia); flex-shrink: 0; }
   .custom-doctype-row .cdt-label { flex: 1; font-size: 13px; color: var(--ink); }
   .custom-doctype-row .cdt-count { font-size: 11px; color: var(--ink3); flex-shrink: 0; }
+
+  /* ── TRASH / RECOVERY ── */
+  .icon-btn-wrap { position: relative; display: inline-flex; }
+  .icon-btn-badge {
+    position: absolute; top: -5px; right: -5px;
+    min-width: 16px; height: 16px; padding: 0 4px;
+    border-radius: 8px; background: var(--rust); color: #fff;
+    font-size: 10px; font-weight: 600; line-height: 16px; text-align: center;
+    pointer-events: none;
+  }
+  .trash-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--parchment2); margin-bottom: 8px;
+  }
+  .trash-item-icon {
+    width: 32px; height: 32px; flex-shrink: 0; border-radius: var(--radius);
+    background: var(--parchment3); color: var(--sepia);
+    display: flex; align-items: center; justify-content: center; font-size: 15px;
+  }
+  .trash-item-body { flex: 1; min-width: 0; }
+  .trash-item-label { font-size: 13px; color: var(--ink); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .trash-item-meta { font-size: 11px; color: var(--ink3); margin-top: 2px; }
+  .trash-item-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+  /* ── MANAGED FIELDS (Occupation/Religion/Education/Family Line) ── */
+  .mf-option-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--parchment2); margin-bottom: 6px;
+  }
+  .mf-option-row .mf-option-label { flex: 1; font-size: 13px; color: var(--ink); }
+  .mf-option-row .mf-option-count { font-size: 11px; color: var(--ink3); flex-shrink: 0; }
+  .mf-option-row .mf-color-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .mf-add-new-link {
+    font-size: 12px; color: var(--rust); cursor: pointer; display: inline-flex;
+    align-items: center; gap: 4px; margin-top: 4px;
+  }
+  .mf-add-new-link:hover { text-decoration: underline; }
 
   /* ── PLACES AUTOCOMPLETE ── */
   .place-ac-wrap { position: relative; }
@@ -984,6 +1036,12 @@
     <button class="icon-btn" onclick="openModal('import-modal')" data-tooltip="Import">
       <i class="ti ti-upload"></i>
     </button>
+    <div class="icon-btn-wrap">
+      <button class="icon-btn" onclick="openTrashModal()" data-tooltip="Trash">
+        <i class="ti ti-trash"></i>
+      </button>
+      <span class="icon-btn-badge" id="trash-badge" style="display:none;">0</span>
+    </div>
     <button class="icon-btn" onclick="openModal('settings-modal')" data-tooltip="Settings">
       <i class="ti ti-settings"></i>
     </button>
@@ -1679,11 +1737,13 @@
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Occupation</label>
-            <input class="form-input" id="ap-occupation" placeholder="Profession / occupation">
+            <select class="form-select" id="ap-occupation"></select>
+            <div class="mf-add-new-link" onclick="openManageField('occupation')"><i class="ti ti-settings"></i> Manage options</div>
           </div>
           <div class="form-group">
             <label class="form-label">Religion</label>
-            <input class="form-input" id="ap-religion" placeholder="Religious affiliation">
+            <select class="form-select" id="ap-religion"></select>
+            <div class="mf-add-new-link" onclick="openManageField('religion')"><i class="ti ti-settings"></i> Manage options</div>
           </div>
         </div>
         <div class="form-group">
@@ -1692,7 +1752,8 @@
         </div>
         <div class="form-group">
           <label class="form-label">Education</label>
-          <input class="form-input" id="ap-education" placeholder="Schools, degrees">
+          <select class="form-select" id="ap-education"></select>
+          <div class="mf-add-new-link" onclick="openManageField('education')"><i class="ti ti-settings"></i> Manage options</div>
         </div>
         <div class="form-group">
           <label class="form-label">Bio / Notes</label>
@@ -1705,7 +1766,8 @@
           </div>
           <div class="form-group">
             <label class="form-label">Family Line</label>
-            <input class="form-input" id="ap-family-line" placeholder="e.g. Smith line">
+            <select class="form-select" id="ap-family-line"></select>
+            <div class="mf-add-new-link" onclick="openModal('add-family-line-modal')"><i class="ti ti-plus"></i> Add family line</div>
           </div>
         </div>
         <div class="form-group">
@@ -2281,6 +2343,10 @@
             Create one at <a href="https://github.com/settings/tokens/new?scopes=gist&description=FamilyArchive+Pro" target="_blank" style="color:var(--gold);font-weight:500;">github.com/settings/tokens</a> →
             click <strong>Generate new token (classic)</strong> → check only the <strong>gist</strong> scope → copy and paste here.
             This token never leaves your device.
+          </div>
+          <div style="font-size:11px;color:var(--danger);margin-top:6px;line-height:1.6;display:flex;gap:6px;align-items:flex-start;">
+            <i class="ti ti-alert-triangle" style="margin-top:1px;flex-shrink:0;"></i>
+            <span>Must be a <strong>classic</strong> token. GitHub's newer "fine-grained" tokens (often the default option now) cannot create Gists at all — using one will make every sync fail.</span>
           </div>
         </div>
       </div>
@@ -3075,6 +3141,88 @@
   </div>
 </div>
 
+<!-- TRASH / RECOVERY MODAL -->
+<div class="modal-backdrop" id="trash-modal">
+  <div class="modal" style="max-width:560px;max-height:85vh;">
+    <div class="modal-header">
+      <i class="ti ti-trash" style="font-size:20px;color:var(--gold)"></i>
+      <div class="modal-title">Trash</div>
+      <span id="trash-count-label" style="font-size:12px;color:var(--ink3);margin-left:6px;"></span>
+      <button class="modal-close" onclick="closeModal('trash-modal')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--ink3);margin-bottom:14px;">
+        Deleted people, events, documents, photos, correspondence, sources, and research tasks land here first. Restore them anytime, or permanently remove them when you're sure.
+      </div>
+      <div id="trash-list"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('trash-modal')">Done</button>
+      <button class="btn btn-danger" onclick="emptyTrash()"><i class="ti ti-trash-x"></i> Empty Trash</button>
+    </div>
+  </div>
+</div>
+
+<!-- MANAGE FIELD OPTIONS MODAL (Occupation / Religion / Education) -->
+<div class="modal-backdrop" id="manage-field-modal">
+  <div class="modal" style="max-width:460px;max-height:85vh;">
+    <div class="modal-header">
+      <i class="ti ti-list-details" style="font-size:20px;color:var(--gold)"></i>
+      <div class="modal-title" id="mf-modal-title">Manage Options</div>
+      <button class="modal-close" onclick="closeModal('manage-field-modal')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--ink3);margin-bottom:14px;">
+        Add options once — they'll show up in the dropdown from then on, keeping entries consistent and typo-free across the archive.
+      </div>
+      <div id="mf-option-list" style="margin-bottom:18px;"></div>
+      <div style="border-top:1px solid var(--border);padding-top:14px;">
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label" id="mf-new-label">New Option</label>
+          <div style="display:flex;gap:8px;">
+            <input class="form-input" id="mf-new-value" placeholder="Type a new option…" style="flex:1;">
+            <button class="btn btn-primary" onclick="addManagedFieldOption()"><i class="ti ti-plus"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('manage-field-modal')">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT FAMILY LINE MODAL -->
+<div class="modal-backdrop" id="edit-family-line-modal">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <i class="ti ti-trees" style="font-size:20px;color:var(--gold)"></i>
+      <div class="modal-title">Edit Family Line</div>
+      <button class="modal-close" onclick="closeModal('edit-family-line-modal')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="efl-id">
+      <div class="form-group">
+        <label class="form-label">Family Line Name</label>
+        <input class="form-input" id="efl-name" placeholder="e.g. Smith maternal line, Johnson paternal line">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Color</label>
+        <input type="color" id="efl-color" style="width:100%;height:36px;border:1px solid var(--border2);border-radius:var(--radius);cursor:pointer;background:none;padding:2px;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="form-textarea" id="efl-notes" rows="2" placeholder="Brief description of this family line…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" onclick="deleteFamilyLine()" style="margin-right:auto;"><i class="ti ti-trash"></i> Delete</button>
+      <button class="btn" onclick="closeModal('edit-family-line-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditFamilyLine()"><i class="ti ti-check"></i> Save</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ═══════════════════════════════════════════════════════════════
 // FAMARCHIVE PRO — FULL APPLICATION LOGIC
@@ -3129,7 +3277,47 @@ function save() {
     updateDashStats();
     refreshPersonSelects();
     refreshFamilyLines();
-  } catch(e) { console.warn('Save failed', e); }
+    hideSaveErrorBanner();
+    return true;
+  } catch(e) {
+    console.error('Save failed', e);
+    // This used to fail completely silently — the modal would close and look
+    // saved, but nothing actually persisted, and the data was gone on reload.
+    // Most common cause: localStorage quota exceeded (large photo/document
+    // attachments). Surface this clearly instead of pretending it worked.
+    showSaveErrorBanner(e);
+    return false;
+  }
+}
+
+let _saveErrorBannerEl = null;
+function showSaveErrorBanner(err) {
+  const isQuota = err && (err.name === 'QuotaExceededError' || /quota/i.test(err.message||''));
+  const msg = isQuota
+    ? 'Storage is full — this change was NOT saved. Your browser\'s local storage limit has been reached, usually from large photo/document attachments. Use Settings → Export Backup to save your data now, then free up space (Trash → Empty Trash, or remove some large attachments) before continuing.'
+    : 'This change was NOT saved due to a storage error. Use Settings → Export Backup to save a copy of your data, then try again.';
+  if (!_saveErrorBannerEl) {
+    _saveErrorBannerEl = document.createElement('div');
+    _saveErrorBannerEl.id = 'save-error-banner';
+    document.body.appendChild(_saveErrorBannerEl);
+  }
+  _saveErrorBannerEl.innerHTML = `
+    <i class="ti ti-alert-triangle"></i>
+    <span>${msg}</span>
+    <button onclick="hideSaveErrorBanner()"><i class="ti ti-x"></i></button>`;
+  _saveErrorBannerEl.classList.add('show');
+}
+function hideSaveErrorBanner() {
+  if (_saveErrorBannerEl) _saveErrorBannerEl.classList.remove('show');
+}
+
+// Estimates current localStorage usage so Settings can show a "X% of storage used" indicator.
+function estimateStorageUsage() {
+  try {
+    const raw = localStorage.getItem(DB_KEY) || '';
+    const bytes = new Blob([raw]).size;
+    return bytes;
+  } catch(e) { return null; }
 }
 
 function load() {
@@ -3507,6 +3695,7 @@ function moveToTrash(recordType, record, related) {
     label: describeTrashRecord(recordType, record),
     deletedAt: new Date().toISOString()
   });
+  updateTrashBadge();
 }
 
 function restoreFromTrash(trashId) {
@@ -3541,7 +3730,6 @@ function restoreFromTrash(trashId) {
   updateDashStats();
   updateSidebarStats();
 }
-
 function permanentlyDeleteTrashItem(trashId) {
   const entry = DB.trash.find(t => t.id === trashId);
   if (!entry) return;
@@ -3566,6 +3754,7 @@ function openTrashModal() {
 
 function renderTrash() {
   const container = document.getElementById('trash-list');
+  updateTrashBadge();
   if (!container) return;
   const countEl = document.getElementById('trash-count-label');
   if (countEl) countEl.textContent = DB.trash.length ? `${DB.trash.length} item${DB.trash.length===1?'':'s'}` : '';
@@ -3588,6 +3777,14 @@ function renderTrash() {
         <button class="btn btn-sm btn-danger" onclick="permanentlyDeleteTrashItem('${entry.id}')"><i class="ti ti-x"></i></button>
       </div>
     </div>`).join('');
+}
+
+function updateTrashBadge() {
+  const badge = document.getElementById('trash-badge');
+  if (!badge) return;
+  const n = (DB.trash||[]).length;
+  if (n > 0) { badge.textContent = n > 99 ? '99+' : n; badge.style.display = ''; }
+  else { badge.style.display = 'none'; }
 }
 
 function trashIcon(recordType) {
@@ -4928,16 +5125,17 @@ const CENSUS_SCHEMAS = {
   1840: { label: '1840 US Census', cols: ['Name','Age/Gender Group','Free White M','Free White F','Free Colored M','Free Colored F','Slaves','Occupation','Pensioners'] },
   1850: { label: '1850 US Census', cols: ['Name','Age','Sex','Color','Occupation','Real Estate Value','Birthplace','Married within year','School within year','Cannot read/write'] },
   1860: { label: '1860 US Census', cols: ['Name','Age','Sex','Color','Occupation','Real Estate Value','Personal Estate Value','Birthplace','Married within year','School within year','Cannot read/write'] },
-  1870: { label: '1870 US Census', cols: ['Name','Age','Sex','Color','Occupation','Real Estate Value','Personal Estate Value','Birthplace','Father foreign','Mother foreign','Born within year','Married within year','School within year','Cannot read/write','Male citizen 21+','Male citizen denied vote'] },
-  1880: { label: '1880 US Census', cols: ['Name','Relation to Head','Marital Status','Sex','Age','Color/Race','Occupation','Months Unemployed','Sick/Disabled','Birthplace','Father Birthplace','Mother Birthplace','Cannot read','Cannot write'] },
+  1870: { label: '1870 US Census', cols: ['Name','Age','Sex','Color','Occupation','Real Estate Value','Personal Estate Value','Birthplace','Father foreign-born','Mother foreign-born','Birth month if within year','Married within year','School within year','Cannot read','Cannot write','Male citizen 21+','Male citizen denied/abridged vote'] },
+  1880: { label: '1880 US Census', cols: ['Name','Relation to Head','Marital Status','Sex','Age','Birth month if within year','Color/Race','Occupation','Months Unemployed','Sick/Disabled','Blind','Deaf and dumb','Birthplace','Father Birthplace','Mother Birthplace','Cannot read','Cannot write'] },
+  1890: { label: '1890 US Census', cols: ['Name','Relation to Head','Race','Age','Sex','Marital Status','Birthplace','Father Birthplace','Mother Birthplace','Years in US','Naturalized','Occupation','Months unemployed','Can read','Can write','Speaks English','Home owned/rented','Farm owned/rented','Union/Confederate veteran'], note: 'Almost all 1890 census population schedules were destroyed in a 1921 fire at the Commerce Department — only fragments survive for a handful of localities. This schema is included for the rare surviving fragments and for the 1890 Veterans Schedule (a partial substitute also affected by the fire).' },
   1900: { label: '1900 US Census', cols: ['Name','Relation to Head','Color/Race','Sex','Birth Month','Birth Year','Age','Marital Status','Years Married','Mother of how many children','Children living','Birthplace','Father Birthplace','Mother Birthplace','Years in US','Naturalization','Occupation','Months not employed','School (months)','Can read','Can write','Speaks English','Farm/Home owned','Mortgage'] },
   1910: { label: '1910 US Census', cols: ['Name','Relation to Head','Sex','Race','Age','Marital Status','Years married','Mother of # children','Children living','Birthplace','Father Birthplace','Mother Birthplace','Years in US','Naturalized','Language spoken','Occupation','Industry','Employer/Employee/Own acct','Unemployed','Can read','Can write','Speaks English','Farm/home owned','Farm schedule no.','Civil War veteran','Blind/Deaf/Dumb'] },
-  1920: { label: '1920 US Census', cols: ['Name','Relation to Head','Sex','Race','Age','Marital Status','Year of immigration','Naturalized','Years in US','Birthplace','Mother tongue','Father birthplace','Father mother tongue','Mother birthplace','Mother mother tongue','Can read','Can write','Speaks English','Occupation','Industry','Employer/Employee/Own acct','Farm home owned','Farm schedule no.'] },
-  1930: { label: '1930 US Census', cols: ['Name','Relation to Head','Sex','Race','Age','Marital Status','Age at first marriage','School attendance','Can read/write','Birthplace','Father birthplace','Mother birthplace','Language spoken at home','Year of immigration','Naturalized','Can speak English','Occupation','Industry','Class of worker','Whether worked yesterday','Farm schedule no.','House owned/rented','Home value or rent','Radio set','Farm'] },
-  1940: { label: '1940 US Census', cols: ['Name','Relation to Head','Sex','Race','Age','Marital Status','Highest grade completed','Birthplace','Citizenship','City/town in 1935','County/state in 1935','Employed/At work','Industry','Class of worker','Weeks worked in 1939','Income in 1939','Farm schedule no.','House owned/rented','Home value/monthly rent','Nonfarm income > $50'] },
-  1950: { label: '1950 US Census', cols: ['Name','Relation to Head','Sex','Race','Age','Marital Status','Birthplace','If foreign born — year immigrated','Occupation','Industry','Class of worker','Hours worked in week','Weeks worked in 1949','Income in 1949'] },
+  1920: { label: '1920 US Census', cols: ['Name','Relation to Head','Sex','Race','Age','Marital Status','Year of immigration','Naturalized','Year of naturalization','Years in US','Birthplace','Mother tongue','Father birthplace','Father mother tongue','Mother birthplace','Mother mother tongue','Can read','Can write','Speaks English','Occupation','Industry','Employer/Employee/Own acct','Farm home owned','Farm schedule no.'] },
+  1930: { label: '1930 US Census', cols: ['Name','Relation to Head','Sex','Race','Age','Marital Status','Age at first marriage','School attendance','Can read/write','Birthplace','Father birthplace','Mother birthplace','Language spoken at home','Year of immigration','Naturalized','Can speak English','Occupation','Industry','Class of worker','Whether worked yesterday','Farm schedule no.','House owned/rented','Home value or rent','Radio set','Farm','If Indian — full or mixed blood','If Indian — tribal affiliation'] },
+  1940: { label: '1940 US Census', cols: ['Name','Relation to Head','Sex','Race','Age','Marital Status','Highest grade completed','Birthplace','Citizenship if foreign-born','City/town in 1935','County/state in 1935','On a farm in 1935','At work for pay/profit','On public emergency work (WPA/NYA/CCC)','Hours worked last week','Seeking work','Industry','Class of worker','Weeks worked in 1939','Wage/salary income in 1939','$50+ other income in 1939 (Y/N)','Farm schedule no.','House owned/rented','Home value/monthly rent'], note: 'Columns 35–50 (parents\' birthplace, mother tongue, veteran status, Social Security, usual occupation, women\'s marriage history) were asked only of the two people on each page\'s designated "sample lines" (~5% of the population), not everyone — leave blank if this person/row wasn\'t a sample line.' },
+  1950: { label: '1950 US Census', cols: ['Name','Relation to Head','Sex','Race','Age','Marital Status','Birthplace','If foreign born — year immigrated','Birth month if within year','Occupation','Industry','Class of worker','Hours worked in week','Weeks worked in 1949','Income in 1949'] },
 };
-const CENSUS_YEAR_OPTIONS = [1790,1800,1810,1820,1830,1840,1850,1860,1870,1880,1900,1910,1920,1930,1940,1950];
+const CENSUS_YEAR_OPTIONS = [1790,1800,1810,1820,1830,1840,1850,1860,1870,1880,1890,1900,1910,1920,1930,1940,1950];
 let censusRows = []; // array of {id, cells:{colName:value}}
 
 function updateDocForm() {
@@ -4989,6 +5187,10 @@ function renderCensusForm(container) {
         </select>
         <span style="font-size:11px;color:var(--ink3);">${schema.label}</span>
       </div>
+      ${schema.note ? `<div style="display:flex;gap:8px;align-items:flex-start;background:rgba(184,134,11,0.08);border:1px solid rgba(184,134,11,0.25);border-radius:var(--radius);padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--ink2);line-height:1.6;">
+        <i class="ti ti-info-circle" style="color:var(--gold);flex-shrink:0;margin-top:1px;"></i>
+        <span>${schema.note}</span>
+      </div>` : ''}
       <div class="census-table-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
         <table class="census-table">
           <thead><tr>
@@ -5138,7 +5340,10 @@ function saveDocument() {
 
   DB.documents.push(doc);
   touchPlace(doc.place);
-  save();
+  if (!save()) {
+    DB.documents = DB.documents.filter(x => x.id !== doc.id); // roll back so it doesn't sit in memory pretending to be saved
+    return; // banner already shown by save(); keep the modal open so nothing typed is lost
+  }
   closeModal('add-document-modal');
   renderDocs();
 }
@@ -5390,9 +5595,12 @@ function savePhoto() {
   const location = document.getElementById('photo-location').value.trim();
   touchPlace(location);
 
+  const newIds = [];
   imgs.forEach(img => {
+    const id = genId();
+    newIds.push(id);
     DB.photos.push({
-      id: genId(),
+      id,
       dataUrl: img.dataset.src || img.src,
       caption: document.getElementById('photo-caption').value.trim(),
       type: document.getElementById('photo-type').value,
@@ -5407,7 +5615,10 @@ function savePhoto() {
     });
   });
 
-  save();
+  if (!save()) {
+    DB.photos = DB.photos.filter(p => !newIds.includes(p.id)); // roll back
+    return; // banner already shown by save(); keep the modal open so nothing is lost
+  }
   closeModal('add-photo-modal');
   renderGallery();
 }
@@ -6785,8 +6996,8 @@ function splitIntoChunks(payload) {
 // ── PUSH ─────────────────────────────────────────────────────────
 async function gistPush(fromModal = false) {
   if (!gistSettings.token) {
-    if (fromModal) setGistBanner('error', '<i class="ti ti-alert-triangle"></i> Please enter a GitHub token first.');
-    else { openModal('gist-modal'); loadGistSettings(); }
+    openModal('gist-modal'); loadGistSettings();
+    setGistBanner('error', '<i class="ti ti-alert-triangle"></i> Please enter a GitHub token first.');
     return;
   }
   setSyncIndicator('syncing');
@@ -6821,7 +7032,16 @@ async function gistPush(fromModal = false) {
 
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({}));
-      throw new Error(err.message || `HTTP ${resp.status}`);
+      // Give a specific, actionable message for the most common real-world cause:
+      // GitHub's newer "fine-grained" tokens do not support the classic gist scope
+      // this app needs, so pushes from those tokens fail every time with a 404/403.
+      let hint = '';
+      if (resp.status === 404 || resp.status === 403) {
+        hint = ' This usually means the token doesn\'t have "gist" access — fine-grained personal access tokens can\'t create Gists at all. Generate a classic token instead (Settings link below) with only the "gist" scope checked.';
+      } else if (resp.status === 401) {
+        hint = ' The token was rejected — it may be expired, revoked, or mistyped.';
+      }
+      throw new Error((err.message || `HTTP ${resp.status}`) + hint);
     }
 
     data = await resp.json();
@@ -6846,7 +7066,13 @@ async function gistPush(fromModal = false) {
     }
   } catch(err) {
     setSyncIndicator('error');
-    if (fromModal) setGistBanner('error', `<i class="ti ti-alert-triangle"></i> Push failed: ${err.message}`);
+    // Always surface the real error — this used to only show when the modal was
+    // already open, so syncing from the header quick-sync button failed completely
+    // silently (just a red dot with no explanation). Open the modal now so the
+    // actual reason is visible no matter which button triggered the push.
+    openModal('gist-modal');
+    loadGistSettings();
+    setGistBanner('error', `<i class="ti ti-alert-triangle"></i> Push failed: ${err.message}`);
     console.error('Gist push error:', err);
   } finally {
     if (fromModal) { document.getElementById('btn-gist-push').disabled = false; document.getElementById('btn-gist-pull').disabled = false; }
@@ -6856,8 +7082,8 @@ async function gistPush(fromModal = false) {
 // ── PULL ─────────────────────────────────────────────────────────
 async function gistPull(fromModal = false) {
   if (!gistSettings.token || !gistSettings.gistId) {
-    if (fromModal) setGistBanner('error', '<i class="ti ti-alert-triangle"></i> Enter both a token and a Gist ID to pull.');
-    else { openModal('gist-modal'); loadGistSettings(); }
+    openModal('gist-modal'); loadGistSettings();
+    setGistBanner('error', '<i class="ti ti-alert-triangle"></i> Enter both a token and a Gist ID to pull.');
     return;
   }
   setSyncIndicator('syncing');
@@ -6958,7 +7184,9 @@ async function gistPull(fromModal = false) {
 
   } catch(err) {
     setSyncIndicator('error');
-    if (fromModal) setGistBanner('error', `<i class="ti ti-alert-triangle"></i> Pull failed: ${err.message}`);
+    openModal('gist-modal');
+    loadGistSettings();
+    setGistBanner('error', `<i class="ti ti-alert-triangle"></i> Pull failed: ${err.message}`);
     console.error('Gist pull error:', err);
   } finally {
     if (fromModal) { document.getElementById('btn-gist-push').disabled = false; document.getElementById('btn-gist-pull').disabled = false; }
@@ -7866,6 +8094,7 @@ updateTreeRootSelect();
 refreshFamilyLines();
 refreshPersonSelects();
 refreshCustomDocTypeOptions();
+updateTrashBadge();
 loadSettings();
 renderDashRecent();
 renderDashTasks();
