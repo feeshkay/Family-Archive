@@ -3320,6 +3320,26 @@ function estimateStorageUsage() {
   } catch(e) { return null; }
 }
 
+// One-time-per-load sweep: pulls any existing free-text occupation/religion/education/
+// familyLine values already on people records into the managed lists, so the dropdowns
+// aren't empty just because this feature was added after data already existed.
+function backfillManagedFieldsFromPeople() {
+  ['occupation','religion','education'].forEach(key => {
+    const list = DB.managedFields[key];
+    DB.people.forEach(p => {
+      const v = (p[key] || '').trim();
+      if (v && !list.includes(v)) list.push(v);
+    });
+    list.sort((a,b) => a.localeCompare(b));
+  });
+  DB.people.forEach(p => {
+    const v = (p.familyLine || '').trim();
+    if (v && !DB.familyLines.some(fl => fl.name === v)) {
+      DB.familyLines.push({ id: genId(), name: v, color: '#8B3A2A', notes: '', addedAt: new Date().toISOString() });
+    }
+  });
+}
+
 function load() {
   try {
     const raw = localStorage.getItem(DB_KEY);
@@ -3348,6 +3368,7 @@ function load() {
         ...DB.communications, ...DB.sources, ...DB.tasks, ...DB.relationships, ...DB.familyLines, ...DB.places]
         .map(x => parseInt((x.id||'').replace('fa_','')) || 0);
       if (allIds.length) nextId = Math.max(...allIds) + 1;
+      backfillManagedFieldsFromPeople();
     }
   } catch(e) { console.warn('Load failed', e); }
 }
@@ -3891,11 +3912,15 @@ function savePerson() {
 
 function clearPersonForm() {
   ['ap-firstname','ap-lastname','ap-middlename','ap-birthdate','ap-birthplace',
-   'ap-deathdate','ap-deathplace','ap-occupation','ap-religion','ap-aka',
-   'ap-education','ap-bio','ap-dna','ap-family-line','ap-tags'].forEach(id => {
+   'ap-deathdate','ap-deathplace','ap-aka',
+   'ap-bio','ap-dna','ap-tags'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  populateManagedFieldSelect('occupation', document.getElementById('ap-occupation'), '');
+  populateManagedFieldSelect('religion', document.getElementById('ap-religion'), '');
+  populateManagedFieldSelect('education', document.getElementById('ap-education'), '');
+  populateFamilyLineSelect(document.getElementById('ap-family-line'), '');
   document.getElementById('ap-gender').value = '';
   document.getElementById('ap-status').value = 'unknown';
   const el = document.getElementById('ap-birth-conf'); if (el) el.value = '';
@@ -4674,13 +4699,13 @@ function editPerson(id) {
   document.getElementById('ap-birthplace').value = p.birthPlace || '';
   document.getElementById('ap-deathdate').value = p.deathDate || '';
   document.getElementById('ap-deathplace').value = p.deathPlace || '';
-  document.getElementById('ap-occupation').value = p.occupation || '';
-  document.getElementById('ap-religion').value = p.religion || '';
+  populateManagedFieldSelect('occupation', document.getElementById('ap-occupation'), p.occupation || '');
+  populateManagedFieldSelect('religion', document.getElementById('ap-religion'), p.religion || '');
   document.getElementById('ap-aka').value = p.aka || '';
-  document.getElementById('ap-education').value = p.education || '';
+  populateManagedFieldSelect('education', document.getElementById('ap-education'), p.education || '');
   document.getElementById('ap-bio').value = p.bio || '';
   document.getElementById('ap-dna').value = p.dna || '';
-  document.getElementById('ap-family-line').value = p.familyLine || '';
+  populateFamilyLineSelect(document.getElementById('ap-family-line'), p.familyLine || '');
   document.getElementById('ap-tags').value = (p.tags || []).join(', ');
 
   // Show existing photo in preview
@@ -5115,6 +5140,168 @@ function refreshCustomDocTypeOptions() {
   }
 }
 
+// ── MANAGED FIELDS (Occupation / Religion / Education) ─────────
+const MANAGED_FIELD_LABELS = { occupation: 'Occupation', religion: 'Religion', education: 'Education' };
+let mfCurrentField = null;
+
+// Renders <option>s for a managed field into the given <select>, selecting currentValue.
+// If currentValue isn't already a known option (e.g. legacy free-text data), it's
+// added to DB.managedFields automatically so existing data is never silently lost.
+function populateManagedFieldSelect(fieldKey, selectEl, currentValue) {
+  if (!selectEl) return;
+  if (!Array.isArray(DB.managedFields[fieldKey])) DB.managedFields[fieldKey] = [];
+  const list = DB.managedFields[fieldKey];
+  if (currentValue && !list.includes(currentValue)) {
+    list.push(currentValue);
+    list.sort((a,b) => a.localeCompare(b));
+    save();
+  }
+  const opts = ['<option value="">—</option>']
+    .concat(list.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`));
+  selectEl.innerHTML = opts.join('');
+  selectEl.value = currentValue || '';
+}
+
+function countPeopleUsingFieldValue(fieldKey, value) {
+  return DB.people.filter(p => (p[fieldKey] || '') === value).length;
+}
+
+function openManageField(fieldKey) {
+  mfCurrentField = fieldKey;
+  document.getElementById('mf-modal-title').textContent = `Manage ${MANAGED_FIELD_LABELS[fieldKey]} Options`;
+  document.getElementById('mf-new-label').textContent = `New ${MANAGED_FIELD_LABELS[fieldKey]}`;
+  document.getElementById('mf-new-value').placeholder = `e.g. ${fieldKey === 'occupation' ? 'Farmer, Carpenter' : fieldKey === 'religion' ? 'Methodist, Catholic' : 'Grammar school, B.A.'}`;
+  document.getElementById('mf-new-value').value = '';
+  renderManagedFieldList();
+  openModal('manage-field-modal');
+}
+
+function renderManagedFieldList() {
+  const container = document.getElementById('mf-option-list');
+  if (!container || !mfCurrentField) return;
+  const list = DB.managedFields[mfCurrentField] || [];
+  if (!list.length) {
+    container.innerHTML = '<div class="text-muted text-sm" style="padding:6px 0;">No options yet — add the first one below.</div>';
+    return;
+  }
+  container.innerHTML = list.map(v => {
+    const n = countPeopleUsingFieldValue(mfCurrentField, v);
+    return `
+    <div class="mf-option-row">
+      <div class="mf-option-label">${escapeHtml(v)}</div>
+      <div class="mf-option-count">${n ? `${n} ${n===1?'person':'people'}` : 'unused'}</div>
+      <button class="btn btn-sm btn-danger" onclick="removeManagedFieldOption('${escapeJsString(v)}')"><i class="ti ti-x"></i></button>
+    </div>`;
+  }).join('');
+}
+
+function addManagedFieldOption() {
+  const input = document.getElementById('mf-new-value');
+  const val = input.value.trim();
+  if (!val || !mfCurrentField) return;
+  const list = DB.managedFields[mfCurrentField];
+  if (list.includes(val)) { input.value = ''; return; }
+  list.push(val);
+  list.sort((a,b) => a.localeCompare(b));
+  save();
+  input.value = '';
+  renderManagedFieldList();
+  refreshOpenManagedFieldSelect(mfCurrentField);
+}
+
+function removeManagedFieldOption(value) {
+  if (!mfCurrentField) return;
+  const n = countPeopleUsingFieldValue(mfCurrentField, value);
+  const msg = n
+    ? `Remove "${value}"? It's currently used by ${n} ${n===1?'person':'people'} — their existing entries will keep the value, but it won't be selectable as a fresh option anymore.`
+    : `Remove "${value}" from the list?`;
+  if (!confirm(msg)) return;
+  DB.managedFields[mfCurrentField] = DB.managedFields[mfCurrentField].filter(v => v !== value);
+  save();
+  renderManagedFieldList();
+  refreshOpenManagedFieldSelect(mfCurrentField);
+}
+
+// If the Add/Edit Person modal happens to be open while options change, keep it in sync
+function refreshOpenManagedFieldSelect(fieldKey) {
+  const el = document.getElementById('ap-' + fieldKey);
+  if (el) populateManagedFieldSelect(fieldKey, el, el.value);
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escapeJsString(s) {
+  return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+}
+
+// ── FAMILY LINE SELECT + EDIT ────────────────────────────────────
+function populateFamilyLineSelect(selectEl, currentValue) {
+  if (!selectEl) return;
+  const opts = ['<option value="">—</option>']
+    .concat(DB.familyLines.map(fl => `<option value="${escapeHtml(fl.name)}">${escapeHtml(fl.name)}</option>`));
+  // Auto-register legacy free-text family line values that predate this select
+  if (currentValue && !DB.familyLines.some(fl => fl.name === currentValue)) {
+    DB.familyLines.push({ id: genId(), name: currentValue, color: '#8B3A2A', notes: '', addedAt: new Date().toISOString() });
+    save();
+    opts.push(`<option value="${escapeHtml(currentValue)}">${escapeHtml(currentValue)}</option>`);
+  }
+  selectEl.innerHTML = opts.join('');
+  selectEl.value = currentValue || '';
+}
+
+function refreshOpenFamilyLineSelect() {
+  const el = document.getElementById('ap-family-line');
+  if (el) populateFamilyLineSelect(el, el.value);
+}
+
+function openEditFamilyLine(id) {
+  const fl = DB.familyLines.find(l => l.id === id);
+  if (!fl) return;
+  document.getElementById('efl-id').value = fl.id;
+  document.getElementById('efl-name').value = fl.name;
+  document.getElementById('efl-color').value = fl.color || '#8B3A2A';
+  document.getElementById('efl-notes').value = fl.notes || '';
+  openModal('edit-family-line-modal');
+}
+
+function saveEditFamilyLine() {
+  const id = document.getElementById('efl-id').value;
+  const fl = DB.familyLines.find(l => l.id === id);
+  if (!fl) return;
+  const newName = document.getElementById('efl-name').value.trim();
+  if (!newName) { alert('Please enter a name for this family line.'); return; }
+  const oldName = fl.name;
+  fl.name = newName;
+  fl.color = document.getElementById('efl-color').value;
+  fl.notes = document.getElementById('efl-notes').value.trim();
+  // Keep people referencing the old name pointed at the renamed line
+  if (oldName !== newName) {
+    DB.people.forEach(p => { if (p.familyLine === oldName) p.familyLine = newName; });
+  }
+  save();
+  closeModal('edit-family-line-modal');
+  refreshFamilyLines();
+  refreshOpenFamilyLineSelect();
+  renderPeople();
+}
+
+function deleteFamilyLine() {
+  const id = document.getElementById('efl-id').value;
+  const fl = DB.familyLines.find(l => l.id === id);
+  if (!fl) return;
+  const n = DB.people.filter(p => p.familyLine === fl.name).length;
+  const msg = n
+    ? `Delete "${fl.name}"? It's currently assigned to ${n} ${n===1?'person':'people'} — they'll keep the text value, but it won't be a manageable line anymore unless re-added.`
+    : `Delete "${fl.name}"?`;
+  if (!confirm(msg)) return;
+  DB.familyLines = DB.familyLines.filter(l => l.id !== id);
+  save();
+  closeModal('edit-family-line-modal');
+  refreshFamilyLines();
+  refreshOpenFamilyLineSelect();
+}
+
 // ── CENSUS YEAR COLUMN DEFINITIONS ──────────────────────────────
 const CENSUS_SCHEMAS = {
   1790: { label: '1790 US Census', cols: ['Name','Free White Males 16+','Free White Males under 16','Free White Females','Other Free Persons','Slaves'] },
@@ -5283,12 +5470,13 @@ function quickCreateFromCensusRow(rowId) {
 
   // Populate the add-person modal
   openModal('add-person-modal');
+  clearPersonForm();
   switchApTab('core');
   document.getElementById('ap-firstname').value = fn;
   document.getElementById('ap-lastname').value  = ln;
   document.getElementById('ap-birthdate').value = byEst ? `abt ${byEst}` : '';
   document.getElementById('ap-birthplace').value = bp;
-  document.getElementById('ap-occupation').value = occ;
+  populateManagedFieldSelect('occupation', document.getElementById('ap-occupation'), occ);
   if (sex.toLowerCase().startsWith('m')) document.getElementById('ap-gender').value = 'M';
   else if (sex.toLowerCase().startsWith('f')) document.getElementById('ap-gender').value = 'F';
   document.getElementById('ap-birth-conf').value = 'estimated';
@@ -5301,6 +5489,7 @@ function quickCreateFromField(fieldId, fieldLabel) {
   const nameStr = input.value.trim();
   const parts   = nameStr.split(/\s+/);
   openModal('add-person-modal');
+  clearPersonForm();
   switchApTab('core');
   document.getElementById('ap-firstname').value = parts[0] || '';
   document.getElementById('ap-lastname').value  = parts.slice(1).join(' ') || '';
@@ -6395,6 +6584,10 @@ function saveRelationship() {
 function saveFamilyLine() {
   const name = document.getElementById('fl-name').value.trim();
   if (!name) return;
+  if (DB.familyLines.some(fl => fl.name.toLowerCase() === name.toLowerCase())) {
+    alert(`A family line named "${name}" already exists.`);
+    return;
+  }
   DB.familyLines.push({
     id: genId(),
     name,
@@ -6405,6 +6598,11 @@ function saveFamilyLine() {
   save();
   closeModal('add-family-line-modal');
   refreshFamilyLines();
+  // If the Add/Edit Person form is open, select the newly-created line right away
+  const sel = document.getElementById('ap-family-line');
+  if (sel) { populateFamilyLineSelect(sel, name); }
+  document.getElementById('fl-name').value = '';
+  document.getElementById('fl-notes').value = '';
 }
 
 function refreshFamilyLines() {
@@ -6414,9 +6612,10 @@ function refreshFamilyLines() {
     return;
   }
   list.innerHTML = DB.familyLines.map(fl => `
-    <div class="sidebar-item" onclick="filterByLine('${fl.name}')">
+    <div class="sidebar-item" onclick="filterByLine('${escapeJsString(fl.name)}')" style="display:flex;align-items:center;gap:8px;">
       <div style="width:8px;height:8px;border-radius:50%;background:${fl.color};flex-shrink:0;"></div>
-      ${fl.name}
+      <span style="flex:1;">${escapeHtml(fl.name)}</span>
+      <i class="ti ti-pencil" style="font-size:13px;color:var(--ink3);flex-shrink:0;" onclick="event.stopPropagation();openEditFamilyLine('${fl.id}')"></i>
     </div>`).join('');
 }
 
@@ -6626,6 +6825,8 @@ function handleImport(input) {
           ${result.people} people · ${result.families} families · ${result.events} events imported
         </div>
       </div>`;
+      save();
+      backfillManagedFieldsFromPeople();
       save();
       updateTreeRootSelect();
       renderPeople();
@@ -8733,6 +8934,8 @@ function loadSampleData() {
     { id: 'sc_1', type: 'letter', date: '23 Dec 1943', from: 'Thomas Hartwell', to: 'Eleanor Hartwell', subject: 'Christmas letter from England, 1943', content: 'Original letter in family collection. Thomas writes of cold weather, misses home cooking, asks about Robert. Sends love to "my Eleanor and little Bobby." Postmarked APO 230, England.', location: 'Family collection — Robert Hartwell, Oak Park IL', peopleIds: ['sp_3','sp_4'], addedAt: new Date().toISOString() }
   );
 
+  save();
+  backfillManagedFieldsFromPeople();
   save();
   updateTreeRootSelect();
   refreshFamilyLines();
