@@ -1308,7 +1308,7 @@
             <option value="other">Other</option>
             <optgroup label="Custom Types" id="doc-filter-custom-group"></optgroup>
           </select>
-          <button class="btn btn-primary" onclick="openModal('add-document-modal')">
+          <button class="btn btn-primary" onclick="resetDocForm();openModal('add-document-modal')">
             <i class="ti ti-file-plus"></i> Add Document
           </button>
         </div>
@@ -1492,7 +1492,7 @@
           <div class="panel-subtitle">DNA kits, matches, ethnicity estimates &amp; genetic genealogy</div>
         </div>
         <div class="panel-actions">
-          <button class="btn btn-primary" onclick="openModal('add-dna-modal')">
+          <button class="btn btn-primary" onclick="resetDnaForm();openModal('add-dna-modal')">
             <i class="ti ti-plus"></i> Add DNA Kit
           </button>
         </div>
@@ -1504,7 +1504,7 @@
             <div id="dna-kits-list">
               <div style="font-size:13px;color:var(--ink3);padding:12px 0;">No DNA kits added yet.</div>
             </div>
-            <button class="btn btn-sm mt-8" onclick="openModal('add-dna-modal')"><i class="ti ti-plus"></i> Add Kit</button>
+            <button class="btn btn-sm mt-8" onclick="resetDnaForm();openModal('add-dna-modal')"><i class="ti ti-plus"></i> Add Kit</button>
           </div>
           <div class="card" style="padding:20px;">
             <div class="card-header" style="padding:0 0 12px;border-bottom:1px solid var(--border);margin-bottom:14px;font-size:15px;"><i class="ti ti-chart-pie" style="color:var(--gold);margin-right:6px;"></i> Ethnicity Estimates</div>
@@ -1958,11 +1958,12 @@
 <div class="modal-backdrop" id="add-document-modal">
   <div class="modal" style="max-width:680px;">
     <div class="modal-header">
-      <i class="ti ti-file-plus" style="font-size:20px;color:var(--gold)"></i>
-      <div class="modal-title">Add Document</div>
+      <i class="ti ti-file-plus" style="font-size:20px;color:var(--gold)" id="doc-modal-icon"></i>
+      <div class="modal-title" id="doc-modal-title">Add Document</div>
       <button class="modal-close" onclick="closeModal('add-document-modal')"><i class="ti ti-x"></i></button>
     </div>
     <div class="modal-body">
+      <input type="hidden" id="doc-edit-id" value="">
       <div class="form-group">
         <label class="form-label">Document Type</label>
         <select class="form-select" id="doc-type-select" onchange="updateDocForm()">
@@ -2050,7 +2051,7 @@
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('add-document-modal')">Cancel</button>
       <button class="btn" onclick="autoReadDocument()" id="btn-auto-read"><i class="ti ti-robot"></i> Auto-Read Document</button>
-      <button class="btn btn-primary" onclick="saveDocument()"><i class="ti ti-check"></i> Save Document</button>
+      <button class="btn btn-primary" onclick="saveDocument()" id="doc-save-btn"><i class="ti ti-check"></i> Save Document</button>
     </div>
   </div>
 </div>
@@ -2553,6 +2554,7 @@
       <i class="ti ti-file-text" style="font-size:20px;color:var(--gold)"></i>
       <div class="modal-title" id="vdm-title">Document</div>
       <div style="margin-left:auto;display:flex;gap:8px;">
+        <button class="btn btn-sm" id="vdm-edit-btn"><i class="ti ti-edit"></i> Edit</button>
         <button class="btn btn-sm btn-danger" id="vdm-delete-btn"><i class="ti ti-trash"></i> Delete</button>
         <button class="modal-close" onclick="closeModal('view-doc-modal')"><i class="ti ti-x"></i></button>
       </div>
@@ -3019,11 +3021,12 @@
 <div class="modal-backdrop" id="add-dna-modal">
   <div class="modal" style="max-width:580px;">
     <div class="modal-header">
-      <i class="ti ti-dna" style="font-size:20px;color:var(--gold)"></i>
-      <div class="modal-title">Add DNA Kit</div>
+      <i class="ti ti-dna" style="font-size:20px;color:var(--gold)" id="dna-modal-icon"></i>
+      <div class="modal-title" id="dna-modal-title">Add DNA Kit</div>
       <button class="modal-close" onclick="closeModal('add-dna-modal')"><i class="ti ti-x"></i></button>
     </div>
     <div class="modal-body">
+      <input type="hidden" id="dna-edit-id" value="">
       <div class="form-row">
         <div class="form-group"><label class="form-label">Testing Company</label><select class="form-select" id="dna-company"><option value="ancestry">AncestryDNA</option><option value="23andme">23andMe</option><option value="myheritage">MyHeritage DNA</option><option value="ftdna">FamilyTreeDNA</option><option value="gedmatch">GEDmatch</option><option value="other">Other</option></select></div>
         <div class="form-group"><label class="form-label">Kit ID / Number</label><input class="form-input" id="dna-kit-id" placeholder="Kit identifier"></div>
@@ -3036,7 +3039,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('add-dna-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveDNAKit()"><i class="ti ti-check"></i> Save Kit</button>
+      <button class="btn btn-primary" onclick="saveDNAKit()" id="dna-save-btn"><i class="ti ti-check"></i> Save Kit</button>
     </div>
   </div>
 </div>
@@ -3485,6 +3488,114 @@ function ageAtDate(person, dateStr, approxOut) {
 function formatAge(age, approx) {
   if (age === null || age === undefined) return '';
   return approx ? `~${age}` : `${age}`;
+}
+
+// ── UNIFIED TIMELINE ─────────────────────────────────────────────
+// Merges events, documents, and photos into one normalized, chronologically
+// sortable array. Each entry keeps its original record under `.raw` plus a
+// few normalized fields (kind, date, year, personIds) so callers can filter
+// and render all three kinds with one pass instead of three separate sections.
+function buildUnifiedTimeline({ personId = null, kinds = null } = {}) {
+  const items = [];
+
+  DB.events.forEach(ev => {
+    if (personId && ev.personId !== personId) return;
+    items.push({
+      kind: 'event',
+      id: ev.id,
+      date: ev.date || '',
+      year: extractYear(ev.date),
+      personIds: ev.personId ? [ev.personId] : [],
+      unconfirmedPersonIds: [],
+      raw: ev
+    });
+  });
+
+  DB.documents.forEach(doc => {
+    if (personId && !(doc.peopleIds||[]).includes(personId) && !(doc.unconfirmedPeopleIds||[]).includes(personId)) return;
+    if (!doc.date) return; // undated documents don't have a place on a chronological timeline
+    items.push({
+      kind: 'document',
+      id: doc.id,
+      date: doc.date,
+      year: extractYear(doc.date),
+      personIds: doc.peopleIds || [],
+      unconfirmedPersonIds: doc.unconfirmedPeopleIds || [],
+      raw: doc
+    });
+  });
+
+  DB.photos.forEach(ph => {
+    if (personId && !(ph.peopleIds||[]).includes(personId) && !(ph.unconfirmedPeopleIds||[]).includes(personId)) return;
+    if (!ph.date) return;
+    items.push({
+      kind: 'photo',
+      id: ph.id,
+      date: ph.date,
+      year: extractYear(ph.date),
+      personIds: ph.peopleIds || [],
+      unconfirmedPersonIds: ph.unconfirmedPeopleIds || [],
+      raw: ph
+    });
+  });
+
+  let filtered = kinds ? items.filter(it => kinds.includes(it.kind)) : items;
+  filtered.sort((a, b) => {
+    const ay = a.year ?? 999999, by = b.year ?? 999999; // undated events sort last, not first
+    return ay - by;
+  });
+  return filtered;
+}
+
+// Renders one unified-timeline entry (event, document, or photo) as a single
+// timeline-item card. `anchorPerson`, if given, is used to compute age-at-date.
+function unifiedTimelineItemHtml(item, anchorPerson, showActions = false) {
+  if (item.kind === 'event') return timelineItemHtml(item.raw, anchorPerson, showActions);
+  if (item.kind === 'document') return timelineDocItemHtml(item, anchorPerson, showActions);
+  if (item.kind === 'photo') return timelineDocItemHtml(item, anchorPerson, showActions); // shares layout, kind-specific bits handled inside
+  return '';
+}
+
+function timelineDocItemHtml(item, anchorPerson, showActions = false) {
+  const isPhoto = item.kind === 'photo';
+  const raw = item.raw;
+  const year = item.year || '?';
+  const approxOut = {};
+  const age = anchorPerson ? ageAtDate(anchorPerson, item.date, approxOut) : null;
+  const ageStr = age !== null ? ` · age ${formatAge(age, approxOut.approx)}` : '';
+
+  const confirmedNames = (item.personIds||[]).map(pid => { const p = DB.people.find(x=>x.id===pid); return p ? fullName(p) : null; }).filter(Boolean);
+  const maybeNames = (item.unconfirmedPersonIds||[]).map(pid => { const p = DB.people.find(x=>x.id===pid); return p ? fullName(p) : null; }).filter(Boolean);
+  const peopleLine = [
+    confirmedNames.length ? confirmedNames.join(', ') : '',
+    maybeNames.length ? `<span style="color:var(--ink3);font-style:italic;">maybe: ${maybeNames.join(', ')}</span>` : ''
+  ].filter(Boolean).join(' · ');
+
+  const title = isPhoto ? (raw.caption || 'Photo') : (raw.title || docTypeLabel(raw.docType));
+  const icon = isPhoto ? 'ti-photo' : `ti ${docTypeIcon(raw.docType)}`;
+  const onclick = isPhoto ? `viewPhoto('${raw.id}')` : `viewDoc('${raw.id}')`;
+  const thumb = isPhoto && raw.dataUrl
+    ? `<img src="${raw.dataUrl}" style="width:40px;height:40px;object-fit:cover;border-radius:var(--radius);flex-shrink:0;">`
+    : '';
+
+  const actions = showActions ? `
+    <div style="display:flex;gap:4px;margin-top:6px;">
+      <button class="btn btn-sm" style="padding:2px 7px;font-size:11px;" onclick="event.stopPropagation();${onclick}"><i class="ti ti-eye"></i> View</button>
+    </div>` : '';
+
+  return `<div class="timeline-item" style="cursor:pointer;" onclick="${onclick}">
+    <div class="timeline-year">${year}</div>
+    <div class="timeline-dot ${isPhoto ? 'photo' : 'document'}"></div>
+    <div class="timeline-content">
+      <div class="event-title" style="display:flex;align-items:center;gap:8px;">
+        ${thumb}
+        <span><i class="ti ${icon}" style="font-size:13px;color:var(--sepia);margin-right:4px;"></i>${title}${ageStr}</span>
+      </div>
+      ${peopleLine ? `<div class="event-desc" style="margin-top:2px;">${peopleLine}</div>` : ''}
+      ${raw.place || raw.location ? `<div class="event-desc"><i class="ti ti-map-pin" style="font-size:12px"></i> ${raw.place || raw.location}</div>` : ''}
+      ${actions}
+    </div>
+  </div>`;
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -4274,17 +4385,13 @@ function openPersonDetail(id) {
   const p = DB.people.find(x => x.id === id);
   if (!p) return;
 
-  const personEvents  = DB.events.filter(e => e.personId === id).sort((a,b) => {
-    const ay = parseInt((a.date||'').split(' ').pop()) || 0;
-    const by2= parseInt((b.date||'').split(' ').pop()) || 0;
-    return ay - by2;
-  });
   const personDocs   = DB.documents.filter(d => (d.peopleIds||[]).includes(id));
   const personPhotos = DB.photos.filter(ph => (ph.peopleIds||[]).includes(id));
   const personComms  = DB.communications.filter(c => (c.peopleIds||[]).includes(id));
   const personRels   = DB.relationships.filter(r => r.person1Id===id || r.person2Id===id);
   const personFans   = (DB.fans||[]).filter(f => f.person1Id===id || f.person2Id===id);
   const fc           = DB.factConfidence?.[id] || {};
+  const personTimeline = buildUnifiedTimeline({ personId: id });
 
   document.getElementById('pfm-name').textContent = fullName(p);
   const body = document.getElementById('pfm-body');
@@ -4365,15 +4472,15 @@ function openPersonDetail(id) {
     </div>` : ''}
 
     <div style="margin-top:20px;">
-      <div class="detail-section-title">Life Events (${personEvents.length})</div>
-      ${personEvents.length
-        ? `<div class="timeline">${personEvents.map(ev=>timelineItemHtml(ev,p,true)).join('')}</div>`
-        : '<div style="font-size:13px;color:var(--ink3);">No events recorded</div>'}
+      <div class="detail-section-title">Timeline (${personTimeline.length})</div>
+      ${personTimeline.length
+        ? `<div class="timeline">${personTimeline.map(it => unifiedTimelineItemHtml(it, p, true)).join('')}</div>`
+        : '<div style="font-size:13px;color:var(--ink3);">No dated events, documents, or photos yet</div>'}
     </div>
 
     <div class="grid-2" style="margin-top:16px;gap:16px;">
       <div>
-        <div class="detail-section-title">Documents (${personDocs.length})</div>
+        <div class="detail-section-title">All Documents (${personDocs.length})</div>
         ${personDocs.length ? personDocs.map(d=>`
           <div style="font-size:13px;padding:6px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;cursor:pointer;" onclick="viewDoc('${d.id}')">
             <i class="ti ${docTypeIcon(d.docType)}" style="color:var(--sepia)"></i>
@@ -4384,7 +4491,7 @@ function openPersonDetail(id) {
         : '<div style="font-size:13px;color:var(--ink3);">No documents</div>'}
       </div>
       <div>
-        <div class="detail-section-title">Photos (${personPhotos.length})</div>
+        <div class="detail-section-title">All Photos (${personPhotos.length})</div>
         ${personPhotos.length
           ? `<div style="display:flex;gap:8px;flex-wrap:wrap;">${personPhotos.slice(0,6).map(ph=>`
               <div style="width:70px;height:70px;border-radius:var(--radius);overflow:hidden;background:var(--parchment2);border:1px solid var(--border);cursor:pointer;" onclick="viewPhoto('${ph.id}')">
@@ -4640,6 +4747,7 @@ function generateHints(personId) {
 
 function openAddDocForPerson(personId, docType) {
   closeModal('person-full-modal');
+  resetDocForm();
   openModal('add-document-modal');
   setTimeout(() => {
     const dtSel = document.getElementById('doc-type-select');
@@ -4828,6 +4936,7 @@ function saveEvent() {
   save();
   closeModal('add-event-modal');
   renderTimeline();
+  if (currentPersonId) openPersonDetail(currentPersonId);
 }
 
 function updateEventFormFields() {
@@ -4858,6 +4967,9 @@ function timelineItemHtml(ev, person, showActions = false) {
   const year = (ev.date||'').split(' ').pop();
   const typeClass = eventTypeColor(ev.type);
   const evTypeLabel = ev.type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const approxOut = {};
+  const age = p ? ageAtDate(p, ev.date, approxOut) : null;
+  const ageStr = age !== null ? ` · age ${formatAge(age, approxOut.approx)}` : '';
   const actions = showActions ? `
     <div style="display:flex;gap:4px;margin-top:6px;">
       <button class="btn btn-sm" style="padding:2px 7px;font-size:11px;" onclick="editEvent('${ev.id}')"><i class="ti ti-edit"></i> Edit</button>
@@ -4867,7 +4979,7 @@ function timelineItemHtml(ev, person, showActions = false) {
     <div class="timeline-year">${year||'?'}</div>
     <div class="timeline-dot ${typeClass}"></div>
     <div class="timeline-content">
-      <div class="event-title">${evTypeLabel}${pName ? ` · ${pName}` : ''}</div>
+      <div class="event-title">${evTypeLabel}${pName ? ` · ${pName}` : ''}${ageStr}</div>
       ${ev.place ? `<div class="event-desc"><i class="ti ti-map-pin" style="font-size:12px"></i> ${ev.place}</div>` : ''}
       ${ev.desc ? `<div class="event-desc" style="margin-top:2px;">${ev.desc}</div>` : ''}
       ${ev.source ? `<div class="event-source"><i class="ti ti-book" style="font-size:11px"></i> ${ev.source}</div>` : ''}
@@ -4882,23 +4994,25 @@ function renderTimeline() {
   const personFilter = document.getElementById('timeline-person-filter').value;
   const typeFilter = document.getElementById('timeline-type-filter').value;
 
-  let events = [...DB.events];
-  if (personFilter) events = events.filter(e => e.personId === personFilter);
-  if (typeFilter) events = events.filter(e => e.type === typeFilter || e.type.startsWith(typeFilter));
+  let items = buildUnifiedTimeline({ personId: personFilter || null });
 
-  // also include document and photo timeline markers
-  events.sort((a,b) => {
-    const ay = parseInt((a.date||'0').split(' ').pop()) || 0;
-    const by2 = parseInt((b.date||'0').split(' ').pop()) || 0;
-    return ay - by2;
-  });
+  if (typeFilter === 'document') {
+    items = items.filter(it => it.kind === 'document');
+  } else if (typeFilter === 'photo') {
+    items = items.filter(it => it.kind === 'photo');
+  } else if (typeFilter) {
+    items = items.filter(it => it.kind === 'event' && (it.raw.type === typeFilter || it.raw.type.startsWith(typeFilter)));
+  }
 
-  if (!events.length) {
-    container.innerHTML = `<div class="empty-state"><i class="ti ti-timeline"></i><h3>No events to display</h3><p>Add events to people in your archive to build the timeline.</p></div>`;
+  if (!items.length) {
+    container.innerHTML = `<div class="empty-state"><i class="ti ti-timeline"></i><h3>No events to display</h3><p>Add events, dated documents, or dated photos to people in your archive to build the timeline.</p></div>`;
     return;
   }
 
-  container.innerHTML = `<div class="timeline">${events.map(ev => timelineItemHtml(ev)).join('')}</div>`;
+  // When filtered to exactly one person, age-at-date can be shown on every entry.
+  const anchorPerson = personFilter ? DB.people.find(p => p.id === personFilter) : null;
+
+  container.innerHTML = `<div class="timeline">${items.map(it => unifiedTimelineItemHtml(it, anchorPerson, !!personFilter)).join('')}</div>`;
 }
 
 // ── DOCUMENTS ────────────────────────────────────────────────────
@@ -5496,7 +5610,76 @@ function quickCreateFromField(fieldId, fieldLabel) {
   document.getElementById('ap-tags').value = fieldLabel.toLowerCase();
 }
 
+function resetDocForm() {
+  document.getElementById('doc-edit-id').value = '';
+  document.getElementById('doc-modal-title').textContent = 'Add Document';
+  document.getElementById('doc-modal-icon').className = 'ti ti-file-plus';
+  document.getElementById('doc-save-btn').innerHTML = '<i class="ti ti-check"></i> Save Document';
+  document.getElementById('btn-auto-read').style.display = '';
+  document.getElementById('doc-type-select').value = 'birth';
+  document.getElementById('doc-title-input').value = '';
+  document.getElementById('doc-date').value = '';
+  document.getElementById('doc-place').value = '';
+  document.getElementById('doc-repository').value = '';
+  document.getElementById('doc-reference').value = '';
+  document.getElementById('doc-url').value = '';
+  document.getElementById('doc-notes').value = '';
+  const filePreview = document.getElementById('doc-file-preview');
+  filePreview.innerHTML = '';
+  filePreview.style.display = 'none';
+  censusRows = [];
+  updateDocForm();
+}
+
+function editDocument(id) {
+  const d = DB.documents.find(x => x.id === id);
+  if (!d) return;
+  closeModal('view-doc-modal');
+  resetDocForm();
+  document.getElementById('doc-edit-id').value = id;
+  document.getElementById('doc-modal-title').textContent = 'Edit Document';
+  document.getElementById('doc-modal-icon').className = 'ti ti-file-text';
+  document.getElementById('doc-save-btn').innerHTML = '<i class="ti ti-check"></i> Save Changes';
+  document.getElementById('btn-auto-read').style.display = 'none'; // not meaningful when editing existing data
+  openModal('add-document-modal');
+  setTimeout(() => {
+    document.getElementById('doc-type-select').value = d.docType;
+    updateDocForm();
+    document.getElementById('doc-title-input').value = d.title || '';
+    document.getElementById('doc-date').value = d.date || '';
+    document.getElementById('doc-place').value = d.place || '';
+    document.getElementById('doc-repository').value = d.repository || '';
+    document.getElementById('doc-reference').value = d.reference || '';
+    document.getElementById('doc-url').value = d.url || '';
+    document.getElementById('doc-notes').value = d.notes || '';
+    // Dynamic standard fields (census has no static df-* fields, nothing to restore there)
+    Object.entries(d.formFields||{}).forEach(([k,v]) => {
+      const el = document.getElementById(k);
+      if (el) el.value = v;
+    });
+    // People selects — populateModalSelects already ran via openModal, so options exist now
+    const peopleSel = document.getElementById('doc-people');
+    if (peopleSel) Array.from(peopleSel.options).forEach(o => { o.selected = (d.peopleIds||[]).includes(o.value); });
+    const maybeSel = document.getElementById('doc-people-maybe');
+    if (maybeSel) Array.from(maybeSel.options).forEach(o => { o.selected = (d.unconfirmedPeopleIds||[]).includes(o.value); });
+    // Existing file preview, if any
+    if (d.fileData) {
+      const filePreview = document.getElementById('doc-file-preview');
+      filePreview.style.display = 'block';
+      if (d.fileData.startsWith('data:image')) {
+        filePreview.innerHTML = `<img src="${d.fileData}" style="max-height:160px;border-radius:var(--radius);border:1px solid var(--border);max-width:100%;">`;
+      } else {
+        filePreview.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--parchment2);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;">
+          <i class="ti ti-file" style="font-size:24px;color:var(--sepia)"></i>
+          <div><div style="font-weight:500;">${d.fileName || 'Attached file'}</div></div>
+        </div>`;
+      }
+    }
+  }, 80);
+}
+
 function saveDocument() {
+  const editId = document.getElementById('doc-edit-id').value;
   const type = document.getElementById('doc-type-select').value;
   const fields = {};
   (DOC_FORMS[type] || []).forEach(f => {
@@ -5507,6 +5690,33 @@ function saveDocument() {
   const peopleIds = Array.from(peopleSelect.selectedOptions).map(o => o.value);
   const maybeSelect = document.getElementById('doc-people-maybe');
   const unconfirmedPeopleIds = maybeSelect ? Array.from(maybeSelect.selectedOptions).map(o => o.value).filter(id => !peopleIds.includes(id)) : [];
+
+  const filePreview = document.querySelector('#doc-file-preview img, #doc-file-preview .doc-thumb');
+
+  if (editId) {
+    const doc = DB.documents.find(x => x.id === editId);
+    if (!doc) { closeModal('add-document-modal'); return; }
+    doc.docType = type;
+    doc.title = document.getElementById('doc-title-input').value.trim() || `${type} record`;
+    doc.date = document.getElementById('doc-date').value.trim();
+    doc.place = document.getElementById('doc-place').value.trim();
+    doc.peopleIds = peopleIds;
+    doc.unconfirmedPeopleIds = unconfirmedPeopleIds;
+    doc.repository = document.getElementById('doc-repository').value.trim();
+    doc.reference = document.getElementById('doc-reference').value.trim();
+    doc.url = document.getElementById('doc-url').value.trim();
+    doc.notes = document.getElementById('doc-notes').value.trim();
+    doc.formFields = fields;
+    if (filePreview && filePreview.src) doc.fileData = filePreview.src;
+    touchPlace(doc.place);
+    if (!save()) return; // banner already shown by save(); keep the modal open so nothing typed is lost
+    closeModal('add-document-modal');
+    renderDocs();
+    if (currentPersonId) openPersonDetail(currentPersonId);
+    if (document.getElementById('panel-timeline')?.classList.contains('active')) renderTimeline();
+    viewDoc(editId);
+    return;
+  }
 
   const doc = {
     id: genId(),
@@ -5524,7 +5734,6 @@ function saveDocument() {
     fileData: null,
     addedAt: new Date().toISOString()
   };
-  const filePreview = document.querySelector('#doc-file-preview img, #doc-file-preview .doc-thumb');
   if (filePreview && filePreview.src) doc.fileData = filePreview.src;
 
   DB.documents.push(doc);
@@ -5535,6 +5744,8 @@ function saveDocument() {
   }
   closeModal('add-document-modal');
   renderDocs();
+  if (currentPersonId) openPersonDetail(currentPersonId);
+  if (document.getElementById('panel-timeline')?.classList.contains('active')) renderTimeline();
 }
 
 function handleDocFileUpload(input) {
@@ -5580,7 +5791,7 @@ function renderDocs() {
   }
 
   if (!docs.length) {
-    container.innerHTML = `<div class="empty-state"><i class="ti ti-files"></i><h3>No documents yet</h3><p>Add birth certificates, census records, military papers, letters, and more.</p><button class="btn btn-primary" onclick="openModal('add-document-modal')"><i class="ti ti-plus"></i> Add First Document</button></div>`;
+    container.innerHTML = `<div class="empty-state"><i class="ti ti-files"></i><h3>No documents yet</h3><p>Add birth certificates, census records, military papers, letters, and more.</p><button class="btn btn-primary" onclick="resetDocForm();openModal('add-document-modal')"><i class="ti ti-plus"></i> Add First Document</button></div>`;
     return;
   }
 
@@ -5686,11 +5897,14 @@ function viewDoc(id) {
   if (!d) return;
 
   document.getElementById('vdm-title').textContent = d.title || 'Document';
+  document.getElementById('vdm-edit-btn').onclick = () => { closeModal('view-doc-modal'); editDocument(id); };
   document.getElementById('vdm-delete-btn').onclick = () => {
     if (!confirm('Delete this document? You can restore this from Trash later.')) return;
     moveToTrash('document', d);
     DB.documents = DB.documents.filter(x => x.id !== id);
     save(); closeModal('view-doc-modal'); renderDocs();
+    if (currentPersonId) openPersonDetail(currentPersonId);
+    if (document.getElementById('panel-timeline')?.classList.contains('active')) renderTimeline();
   };
 
   const people = (d.peopleIds||[]).map(pid => { const p = DB.people.find(x=>x.id===pid); return p ? fullName(p) : ''; }).filter(Boolean);
@@ -5810,6 +6024,8 @@ function savePhoto() {
   }
   closeModal('add-photo-modal');
   renderGallery();
+  if (currentPersonId) openPersonDetail(currentPersonId);
+  if (document.getElementById('panel-timeline')?.classList.contains('active')) renderTimeline();
 }
 
 function renderGallery() {
@@ -5849,6 +6065,8 @@ function viewPhoto(id) {
     moveToTrash('photo', ph);
     DB.photos = DB.photos.filter(x => x.id !== id);
     save(); closeModal('view-photo-modal'); renderGallery();
+    if (currentPersonId) openPersonDetail(currentPersonId);
+    if (document.getElementById('panel-timeline')?.classList.contains('active')) renderTimeline();
   };
 
   const confirmedNames   = (ph.peopleIds||[]).map(pid => { const p = DB.people.find(x=>x.id===pid); return p ? fullName(p) : ''; }).filter(Boolean);
@@ -8213,7 +8431,7 @@ function openExtPanelForPerson(personId) {
   renderExtLinks();
 }
 
-function extractYear(dateStr) {
+function extractYearSimple(dateStr) {
   if (!dateStr) return '';
   const m = String(dateStr).match(/\d{4}/);
   return m ? m[0] : '';
@@ -8233,8 +8451,8 @@ function renderExtLinks() {
 
   const fn = encodeURIComponent(p.firstName || '');
   const ln = encodeURIComponent(p.lastName  || '');
-  const by = extractYear(p.birthDate);
-  const dy = extractYear(p.deathDate);
+  const by = extractYearSimple(p.birthDate);
+  const dy = extractYearSimple(p.deathDate);
   const fnRaw = p.firstName || '';
   const lnRaw = p.lastName  || '';
 
@@ -8315,8 +8533,90 @@ document.getElementById('gallery-person-filter').addEventListener('change', () =
 console.log('FamilyArchive Pro initialized. Data loaded:', DB.people.length, 'people,', DB.documents.length, 'docs.');
 
 // ── DNA ──────────────────────────────────────────────────────────
+function resetDnaForm() {
+  document.getElementById('dna-edit-id').value = '';
+  document.getElementById('dna-modal-title').textContent = 'Add DNA Kit';
+  document.getElementById('dna-modal-icon').className = 'ti ti-dna';
+  document.getElementById('dna-save-btn').innerHTML = '<i class="ti ti-check"></i> Save Kit';
+  document.getElementById('dna-company').value = 'ancestry';
+  document.getElementById('dna-kit-id').value = '';
+  document.getElementById('dna-test-date').value = '';
+  document.getElementById('dna-y-haplo').value = '';
+  document.getElementById('dna-mt-haplo').value = '';
+  document.getElementById('dna-ethnicity').value = '';
+  document.getElementById('dna-notes').value = '';
+}
+
+function editDNAKit(id) {
+  const k = (DB.dnaKits||[]).find(x => x.id === id);
+  if (!k) return;
+  resetDnaForm();
+  document.getElementById('dna-edit-id').value = id;
+  document.getElementById('dna-modal-title').textContent = 'Edit DNA Kit';
+  document.getElementById('dna-modal-icon').className = 'ti ti-pencil';
+  document.getElementById('dna-save-btn').innerHTML = '<i class="ti ti-check"></i> Save Changes';
+  openModal('add-dna-modal');
+  setTimeout(() => {
+    document.getElementById('dna-company').value = k.company || 'ancestry';
+    document.getElementById('dna-kit-id').value = k.kitId || '';
+    document.getElementById('dna-person').value = k.personId || '';
+    document.getElementById('dna-test-date').value = k.testDate || '';
+    document.getElementById('dna-y-haplo').value = k.yHaplo || '';
+    document.getElementById('dna-mt-haplo').value = k.mtHaplo || '';
+    document.getElementById('dna-ethnicity').value = k.ethnicity || '';
+    document.getElementById('dna-notes').value = k.notes || '';
+  }, 60);
+}
+
+function deleteDNAKit(id) {
+  const k = (DB.dnaKits||[]).find(x => x.id === id);
+  if (!k) return;
+  if (!confirm('Delete this DNA kit? You can restore this from Trash later.')) return;
+  moveToTrash('dnaKit', k);
+  DB.dnaKits = DB.dnaKits.filter(x => x.id !== id);
+  // Clear the linked person's dna field if it pointed at this kit
+  if (k.personId) {
+    const p = DB.people.find(x => x.id === k.personId);
+    if (p && p.dna === (k.company + ':' + k.kitId)) p.dna = '';
+  }
+  save();
+  renderDNA();
+  if (currentPersonId) openPersonDetail(currentPersonId);
+}
+
 function saveDNAKit() {
+  const editId = document.getElementById('dna-edit-id').value;
   const personSel = document.getElementById('dna-person');
+
+  if (editId) {
+    const kit = (DB.dnaKits||[]).find(x => x.id === editId);
+    if (!kit) { closeModal('add-dna-modal'); return; }
+    const oldPersonId = kit.personId;
+    const oldTag = kit.company + ':' + kit.kitId;
+    kit.company = document.getElementById('dna-company').value;
+    kit.kitId = document.getElementById('dna-kit-id').value.trim();
+    kit.personId = personSel.value;
+    kit.testDate = document.getElementById('dna-test-date').value.trim();
+    kit.yHaplo = document.getElementById('dna-y-haplo').value.trim();
+    kit.mtHaplo = document.getElementById('dna-mt-haplo').value.trim();
+    kit.ethnicity = document.getElementById('dna-ethnicity').value.trim();
+    kit.notes = document.getElementById('dna-notes').value.trim();
+    // If the tested person changed, move the .dna tag off the old person and onto the new one
+    if (oldPersonId && oldPersonId !== kit.personId) {
+      const oldP = DB.people.find(x => x.id === oldPersonId);
+      if (oldP && oldP.dna === oldTag) oldP.dna = '';
+    }
+    if (kit.personId) {
+      const p = DB.people.find(x => x.id === kit.personId);
+      if (p) p.dna = kit.company + ':' + kit.kitId;
+    }
+    save();
+    closeModal('add-dna-modal');
+    renderDNA();
+    if (currentPersonId) openPersonDetail(currentPersonId);
+    return;
+  }
+
   const kit = {
     id: genId(),
     company: document.getElementById('dna-company').value,
@@ -8361,12 +8661,18 @@ function renderDNA() {
   kitsEl.innerHTML = DB.dnaKits.map(k => {
     const person = DB.people.find(p => p.id === k.personId);
     const col = companyColors[k.company] || '#A0845C';
-    return `<div style="border-left:3px solid ${col};padding:8px 10px;margin-bottom:8px;background:var(--parchment2);border-radius:0 var(--radius) var(--radius) 0;">
-      <div style="font-weight:500;font-size:13px;">${companyNames[k.company]||k.company} ${k.kitId ? `· ${k.kitId}` : ''}</div>
-      ${person ? `<div style="font-size:12px;color:var(--ink3);">Tested: ${fullName(person)}</div>` : ''}
-      ${k.testDate ? `<div style="font-size:11px;color:var(--ink3);">${k.testDate}</div>` : ''}
-      ${k.yHaplo ? `<div style="font-size:11px;color:var(--sepia2);">Y-DNA: ${k.yHaplo}</div>` : ''}
-      ${k.mtHaplo ? `<div style="font-size:11px;color:var(--sepia2);">mtDNA: ${k.mtHaplo}</div>` : ''}
+    return `<div style="border-left:3px solid ${col};padding:8px 10px;margin-bottom:8px;background:var(--parchment2);border-radius:0 var(--radius) var(--radius) 0;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:500;font-size:13px;">${companyNames[k.company]||k.company} ${k.kitId ? `· ${k.kitId}` : ''}</div>
+        ${person ? `<div style="font-size:12px;color:var(--ink3);">Tested: ${fullName(person)}</div>` : ''}
+        ${k.testDate ? `<div style="font-size:11px;color:var(--ink3);">${k.testDate}</div>` : ''}
+        ${k.yHaplo ? `<div style="font-size:11px;color:var(--sepia2);">Y-DNA: ${k.yHaplo}</div>` : ''}
+        ${k.mtHaplo ? `<div style="font-size:11px;color:var(--sepia2);">mtDNA: ${k.mtHaplo}</div>` : ''}
+      </div>
+      <div style="display:flex;gap:4px;flex-shrink:0;">
+        <button class="btn btn-sm" style="padding:2px 7px;" onclick="editDNAKit('${k.id}')" title="Edit"><i class="ti ti-edit"></i></button>
+        <button class="btn btn-sm btn-danger" style="padding:2px 7px;" onclick="deleteDNAKit('${k.id}')" title="Delete"><i class="ti ti-trash"></i></button>
+      </div>
     </div>`;
   }).join('');
 
@@ -8641,6 +8947,7 @@ function saveEditEvent() {
   save();
   closeModal('edit-event-modal');
   if (currentPersonId) openPersonDetail(currentPersonId);
+  if (document.getElementById('panel-timeline')?.classList.contains('active')) renderTimeline();
 }
 
 function deleteEvent(id) {
@@ -8650,6 +8957,7 @@ function deleteEvent(id) {
   DB.events = DB.events.filter(e => e.id !== id);
   save();
   if (currentPersonId) openPersonDetail(currentPersonId);
+  if (document.getElementById('panel-timeline')?.classList.contains('active')) renderTimeline();
 }
 
 // ── EDIT SOURCE ──────────────────────────────────────────────────
@@ -8763,6 +9071,8 @@ function saveEditPhoto() {
   save();
   closeModal('edit-photo-modal');
   renderGallery();
+  if (currentPersonId) openPersonDetail(currentPersonId);
+  if (document.getElementById('panel-timeline')?.classList.contains('active')) renderTimeline();
   // Reopen photo viewer with updated data
   viewPhoto(id);
 }
@@ -8952,7 +9262,7 @@ document.addEventListener('keydown', e => {
   if (e.metaKey || e.ctrlKey) {
     if (e.key === 'p') { e.preventDefault(); openModal('add-person-modal'); }
     if (e.key === 'e') { e.preventDefault(); openModal('add-event-modal'); }
-    if (e.key === 'd') { e.preventDefault(); openModal('add-document-modal'); }
+    if (e.key === 'd') { e.preventDefault(); resetDocForm(); openModal('add-document-modal'); }
     if (e.key === 'f') { e.preventDefault(); switchPanel('people'); setTimeout(() => document.getElementById('people-search')?.focus(), 100); }
     if (e.key === 't') { e.preventDefault(); switchPanel('tree'); }
   }
