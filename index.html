@@ -3047,18 +3047,19 @@
 <div class="modal-backdrop" id="add-relationship-modal">
   <div class="modal" style="max-width:500px;">
     <div class="modal-header">
-      <i class="ti ti-link" style="font-size:20px;color:var(--gold)"></i>
-      <div class="modal-title">Add Relationship</div>
+      <i class="ti ti-link" style="font-size:20px;color:var(--gold)" id="rel-modal-icon"></i>
+      <div class="modal-title" id="rel-modal-title">Add Relationship</div>
       <button class="modal-close" onclick="closeModal('add-relationship-modal')"><i class="ti ti-x"></i></button>
     </div>
     <div class="modal-body">
+      <input type="hidden" id="rel-edit-id" value="">
       <div class="form-group">
         <label class="form-label">Person 1</label>
         <select class="form-select" id="rel-person1"></select>
       </div>
       <div class="form-group">
         <label class="form-label">Relationship Type</label>
-        <select class="form-select" id="rel-type">
+        <select class="form-select" id="rel-type" onchange="document.getElementById('rel-extra').style.display = this.value === 'spouse' ? 'block' : 'none';">
           <option value="parent">Parent → Child</option>
           <option value="spouse">Spouse / Partner</option>
           <option value="sibling">Sibling</option>
@@ -3091,7 +3092,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('add-relationship-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveRelationship()"><i class="ti ti-check"></i> Save Relationship</button>
+      <button class="btn btn-primary" onclick="saveRelationship()" id="rel-save-btn"><i class="ti ti-check"></i> Save Relationship</button>
     </div>
   </div>
 </div>
@@ -3195,6 +3196,32 @@
   </div>
 </div>
 
+<!-- EDIT FAN ENTRY MODAL -->
+<div class="modal-backdrop" id="edit-fan-modal">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <i class="ti ti-users" style="font-size:20px;color:var(--gold)"></i>
+      <div class="modal-title">Edit FAN Entry</div>
+      <button class="modal-close" onclick="closeModal('edit-fan-modal')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="fan-edit-id" value="">
+      <div class="form-group">
+        <label class="form-label">Connection to <span id="fan-edit-other-name"></span></label>
+        <select class="form-select" id="fan-edit-type"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Note</label>
+        <textarea class="form-textarea" id="fan-edit-note" rows="2" placeholder="Optional context — how they're connected, source, etc."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('edit-fan-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveFanEntryEdit()"><i class="ti ti-check"></i> Save Changes</button>
+    </div>
+  </div>
+</div>
+
 <!-- EDIT FAMILY LINE MODAL -->
 <div class="modal-backdrop" id="edit-family-line-modal">
   <div class="modal" style="max-width:420px;">
@@ -3230,6 +3257,116 @@
 // ═══════════════════════════════════════════════════════════════
 // FAMARCHIVE PRO — FULL APPLICATION LOGIC
 // ═══════════════════════════════════════════════════════════════
+
+// ── MEDIA STORE (IndexedDB) ──────────────────────────────────────
+// Photo/document/profile image blobs (base64 data URLs) live here instead of
+// inside the main localStorage JSON blob. localStorage has a hard ~5-10MB
+// ceiling shared across the whole app; IndexedDB has no such practical limit
+// for this app's purposes. blobCache mirrors IndexedDB in memory so every
+// existing synchronous render (`${ph.dataUrl}` in template strings) keeps
+// working unchanged — it just reads `blobCache[id]` instead.
+const MEDIA_DB_NAME = 'familyarchive_media_v1';
+const MEDIA_STORE = 'blobs';
+let mediaDB = null;
+let blobCache = {}; // { recordId: dataUrlString }
+
+function openMediaDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(MEDIA_DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(MEDIA_STORE)) db.createObjectStore(MEDIA_STORE);
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function mediaPut(id, dataUrl) {
+  blobCache[id] = dataUrl; // optimistic: available to sync renders immediately
+  return new Promise((resolve, reject) => {
+    if (!mediaDB) { resolve(false); return; }
+    try {
+      const tx = mediaDB.transaction(MEDIA_STORE, 'readwrite');
+      tx.objectStore(MEDIA_STORE).put(dataUrl, id);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+    } catch(e) { reject(e); }
+  });
+}
+
+function mediaDelete(id) {
+  return new Promise((resolve) => {
+    delete blobCache[id];
+    if (!mediaDB) { resolve(); return; }
+    try {
+      const tx = mediaDB.transaction(MEDIA_STORE, 'readwrite');
+      tx.objectStore(MEDIA_STORE).delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    } catch(e) { resolve(); }
+  });
+}
+
+// Loads every stored blob into blobCache. Called once at startup.
+function mediaLoadAll() {
+  return new Promise((resolve) => {
+    if (!mediaDB) { resolve(); return; }
+    try {
+      const tx = mediaDB.transaction(MEDIA_STORE, 'readonly');
+      const store = tx.objectStore(MEDIA_STORE);
+      const keysReq = store.getAllKeys();
+      const valsReq = store.getAll();
+      tx.oncomplete = () => {
+        const keys = keysReq.result || [];
+        const vals = valsReq.result || [];
+        keys.forEach((k, i) => { blobCache[k] = vals[i]; });
+        resolve();
+      };
+      tx.onerror = () => resolve();
+    } catch(e) { resolve(); }
+  });
+}
+
+// Estimates IndexedDB media usage by summing cached blob string lengths.
+function estimateMediaUsage() {
+  let bytes = 0;
+  for (const k in blobCache) { if (blobCache[k]) bytes += blobCache[k].length; }
+  return bytes;
+}
+
+// One-time migration: older saves embedded dataUrl/fileData/photo directly in
+// DB.photos / DB.documents / DB.people. Moves any of those into IndexedDB,
+// replaces the field with a boolean flag, and returns true if anything moved
+// (caller should save() afterward).
+async function migrateLegacyBlobsToIndexedDB() {
+  let migrated = false;
+  for (const ph of DB.photos) {
+    if (ph.dataUrl) {
+      await mediaPut(ph.id, ph.dataUrl);
+      ph.hasPhoto = true;
+      delete ph.dataUrl;
+      migrated = true;
+    }
+  }
+  for (const d of DB.documents) {
+    if (d.fileData) {
+      await mediaPut(d.id, d.fileData);
+      d.hasFile = true;
+      delete d.fileData;
+      migrated = true;
+    }
+  }
+  for (const p of DB.people) {
+    if (p.photo) {
+      await mediaPut(p.id, p.photo);
+      p.hasPhoto = true;
+      delete p.photo;
+      migrated = true;
+    }
+  }
+  return migrated;
+}
 
 // ── DATA STORE ──────────────────────────────────────────────────
 const DB_KEY = 'familyarchive_data_v2';
@@ -3296,8 +3433,12 @@ function save() {
 let _saveErrorBannerEl = null;
 function showSaveErrorBanner(err) {
   const isQuota = err && (err.name === 'QuotaExceededError' || /quota/i.test(err.message||''));
+  // Photos/document files/profile photos now live in IndexedDB, not in this
+  // localStorage blob, so quota errors here are almost always from a very
+  // large amount of text data rather than media. Kept the same banner logic
+  // since a quota error is still a quota error either way.
   const msg = isQuota
-    ? 'Storage is full — this change was NOT saved. Your browser\'s local storage limit has been reached, usually from large photo/document attachments. Use Settings → Export Backup to save your data now, then free up space (Trash → Empty Trash, or remove some large attachments) before continuing.'
+    ? 'Storage is full — this change was NOT saved. Your browser\'s local storage limit has been reached. Use Settings → Export Backup to save your data now, then free up space (Trash → Empty Trash) before continuing.'
     : 'This change was NOT saved due to a storage error. Use Settings → Export Backup to save a copy of your data, then try again.';
   if (!_saveErrorBannerEl) {
     _saveErrorBannerEl = document.createElement('div');
@@ -3314,12 +3455,17 @@ function hideSaveErrorBanner() {
   if (_saveErrorBannerEl) _saveErrorBannerEl.classList.remove('show');
 }
 
-// Estimates current localStorage usage so Settings can show a "X% of storage used" indicator.
+// Estimates current storage usage so Settings can show a "X used" indicator.
+// Returns both: localStorage (text data — people, events, etc.) and the
+// IndexedDB media store (photos/document files/profile photos), since the
+// two now have very different headroom (localStorage ~5-10MB ceiling vs.
+// IndexedDB effectively unbounded for this app's purposes).
 function estimateStorageUsage() {
   try {
     const raw = localStorage.getItem(DB_KEY) || '';
-    const bytes = new Blob([raw]).size;
-    return bytes;
+    const textBytes = new Blob([raw]).size;
+    const mediaBytes = estimateMediaUsage();
+    return { textBytes, mediaBytes, totalBytes: textBytes + mediaBytes };
   } catch(e) { return null; }
 }
 
@@ -3376,6 +3522,22 @@ function load() {
   } catch(e) { console.warn('Load failed', e); }
 }
 
+// Async startup step: opens the IndexedDB media store, loads every blob into
+// blobCache, then migrates any old-format records (pre-Session-10 saves that
+// still have dataUrl/fileData/photo embedded directly) into IndexedDB. Runs
+// once at app start, before the first render, so thumbnails are present on
+// first paint rather than popping in.
+async function initMedia() {
+  try {
+    mediaDB = await openMediaDB();
+    await mediaLoadAll();
+    const migrated = await migrateLegacyBlobsToIndexedDB();
+    if (migrated) save();
+  } catch(e) {
+    console.warn('Media store init failed — photos/files may not load.', e);
+  }
+}
+
 // ── PANEL SWITCHING ──────────────────────────────────────────────
 function switchPanel(name) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -3409,6 +3571,19 @@ function openModal(id) {
 function closeModal(id) {
   const m = document.getElementById(id);
   if (m) m.classList.remove('open');
+  if (id === 'add-person-modal') {
+    // If closed mid quick-create-from-document without saving, restore the
+    // document modal so nothing typed there is lost (savePerson() clears
+    // window._docQuickCreateSnapshot itself before this runs, so this only
+    // fires on an actual cancel, not a successful save).
+    if (window._docQuickCreateSnapshot) {
+      setTimeout(() => restoreDocModalAfterQuickCreate(null), 100);
+    }
+    // Always reset modal chrome back to create mode on close, whether saved,
+    // cancelled, or dismissed — otherwise an abandoned edit can leave the
+    // Save button silently wired to update the wrong person next time.
+    clearPersonForm();
+  }
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-backdrop.open').forEach(m => m.classList.remove('open')); });
 document.addEventListener('click', e => {
@@ -3574,8 +3749,8 @@ function timelineDocItemHtml(item, anchorPerson, showActions = false) {
   const title = isPhoto ? (raw.caption || 'Photo') : (raw.title || docTypeLabel(raw.docType));
   const icon = isPhoto ? 'ti-photo' : `ti ${docTypeIcon(raw.docType)}`;
   const onclick = isPhoto ? `viewPhoto('${raw.id}')` : `viewDoc('${raw.id}')`;
-  const thumb = isPhoto && raw.dataUrl
-    ? `<img src="${raw.dataUrl}" style="width:40px;height:40px;object-fit:cover;border-radius:var(--radius);flex-shrink:0;">`
+  const thumb = isPhoto && blobCache[raw.id]
+    ? `<img src="${blobCache[raw.id]}" style="width:40px;height:40px;object-fit:cover;border-radius:var(--radius);flex-shrink:0;">`
     : '';
 
   const actions = showActions ? `
@@ -3801,7 +3976,8 @@ function initAllPlaceAutocompletes() {
 
 const TRASH_LABELS = {
   person: 'Person', event: 'Event', document: 'Document', photo: 'Photo',
-  communication: 'Correspondence', source: 'Source', task: 'Research Task'
+  communication: 'Correspondence', source: 'Source', task: 'Research Task',
+  relationship: 'Relationship', dnaKit: 'DNA Kit', fan: 'FAN Entry'
 };
 
 function describeTrashRecord(recordType, record) {
@@ -3813,6 +3989,20 @@ function describeTrashRecord(recordType, record) {
     case 'communication': return record.subject || record.type || 'Correspondence';
     case 'source':        return record.title || record.citation || 'Source';
     case 'task':          return record.title || 'Research task';
+    case 'relationship': {
+      const p1 = DB.people.find(x => x.id === record.person1Id);
+      const p2 = DB.people.find(x => x.id === record.person2Id);
+      return `${relTypeLabel(record.type, true) || 'Relationship'}: ${p1?fullName(p1):'?'} – ${p2?fullName(p2):'?'}`;
+    }
+    case 'dnaKit': {
+      const p = DB.people.find(x => x.id === record.personId);
+      return `DNA Kit${record.kitId?' · '+record.kitId:''}${p?' — '+fullName(p):''}`;
+    }
+    case 'fan': {
+      const p1 = DB.people.find(x => x.id === record.person1Id);
+      const p2 = DB.people.find(x => x.id === record.person2Id);
+      return `${record.fanType || 'FAN'}: ${p1?fullName(p1):'?'} – ${p2?fullName(p2):'?'}`;
+    }
     default:               return 'Record';
   }
 }
@@ -3851,14 +4041,18 @@ function restoreFromTrash(trashId) {
     case 'communication': DB.communications.push(record); break;
     case 'source':        DB.sources.push(record); break;
     case 'task':          DB.tasks.push(record); break;
+    case 'relationship':  DB.relationships.push(record); break;
+    case 'dnaKit':        if (!DB.dnaKits) DB.dnaKits = []; DB.dnaKits.push(record); break;
+    case 'fan':            if (!DB.fans) DB.fans = []; DB.fans.push(record); break;
   }
 
   DB.trash = DB.trash.filter(t => t.id !== trashId);
   save();
   renderTrash();
   // Refresh whichever panel would show this record type
-  const refreshers = { person: renderPeople, event: renderTimeline, document: renderDocs, photo: renderGallery, communication: renderComms, source: renderSources, task: renderResearch };
+  const refreshers = { person: renderPeople, event: renderTimeline, document: renderDocs, photo: renderGallery, communication: renderComms, source: renderSources, task: renderResearch, dnaKit: renderDNA };
   if (refreshers[recordType]) refreshers[recordType]();
+  if (recordType === 'relationship' || recordType === 'fan') { if (currentPersonId) openPersonDetail(currentPersonId); }
   updateDashStats();
   updateSidebarStats();
 }
@@ -3866,6 +4060,7 @@ function permanentlyDeleteTrashItem(trashId) {
   const entry = DB.trash.find(t => t.id === trashId);
   if (!entry) return;
   if (!confirm(`Permanently delete "${entry.label}"? This truly cannot be undone.`)) return;
+  if (['photo','document','person'].includes(entry.recordType)) mediaDelete(entry.record.id);
   DB.trash = DB.trash.filter(t => t.id !== trashId);
   save();
   renderTrash();
@@ -3874,6 +4069,7 @@ function permanentlyDeleteTrashItem(trashId) {
 function emptyTrash() {
   if (!DB.trash.length) return;
   if (!confirm(`Permanently delete all ${DB.trash.length} item(s) in the trash? This cannot be undone.`)) return;
+  DB.trash.forEach(t => { if (['photo','document','person'].includes(t.recordType)) mediaDelete(t.record.id); });
   DB.trash = [];
   save();
   renderTrash();
@@ -3920,7 +4116,7 @@ function updateTrashBadge() {
 }
 
 function trashIcon(recordType) {
-  const m = { person: 'ti-user', event: 'ti-calendar-event', document: 'ti-file-text', photo: 'ti-photo', communication: 'ti-mail', source: 'ti-book', task: 'ti-clipboard-list' };
+  const m = { person: 'ti-user', event: 'ti-calendar-event', document: 'ti-file-text', photo: 'ti-photo', communication: 'ti-mail', source: 'ti-book', task: 'ti-clipboard-list', relationship: 'ti-link', dnaKit: 'ti-dna', fan: 'ti-users' };
   return m[recordType] || 'ti-file';
 }
 
@@ -3960,7 +4156,7 @@ function savePerson() {
     dna:        document.getElementById('ap-dna').value.trim(),
     familyLine: document.getElementById('ap-family-line').value.trim(),
     tags:       document.getElementById('ap-tags').value.split(',').map(t=>t.trim()).filter(Boolean),
-    photo:      null,
+    hasPhoto:   false,
     addedAt:    new Date().toISOString()
   };
   if (!p.firstName && !p.lastName) {
@@ -3970,7 +4166,7 @@ function savePerson() {
   }
 
   const previewImg = document.querySelector('#ap-photo-preview img');
-  if (previewImg) p.photo = previewImg.src;
+  if (previewImg) { p.hasPhoto = true; mediaPut(p.id, previewImg.src); }
 
   DB.people.push(p);
   touchPlace(p.birthPlace);
@@ -4000,6 +4196,10 @@ function savePerson() {
   const pendingSnap = window._pendingRel ? { ...window._pendingRel } : null;
   window._pendingRel = null;
 
+  // ── PENDING DOCUMENT LINK (from quickCreateFromField / quickCreateFromCensusRow) ──
+  const docSnap = window._docQuickCreateSnapshot;
+  window._docQuickCreateSnapshot = null;
+
   save();
   closeModal('add-person-modal');
   clearPersonForm();
@@ -4016,6 +4216,11 @@ function savePerson() {
   if (pendingSnap) {
     wirePendingRel(pendingSnap.anchorId, p.id, pendingSnap.relType);
     setTimeout(() => openPersonDetail(pendingSnap.anchorId), 100);
+  }
+
+  // Resume the Add Document modal with the new person attached
+  if (docSnap) {
+    setTimeout(() => restoreDocModalAfterQuickCreate(p.id), 100);
   }
 
   savePerson._inProgress = false;
@@ -4052,6 +4257,20 @@ function clearPersonForm() {
   const sib = document.getElementById('fb-siblings-list'); if (sib) sib.innerHTML = '';
   const chi = document.getElementById('fb-children-list'); if (chi) chi.innerHTML = '';
   const fan = document.getElementById('fan-entries-list'); if (fan) fan.innerHTML = '';
+
+  // Reset modal chrome back to "create" mode. Without this, cancelling an
+  // edit and then opening Add Person fresh left the Save button still wired
+  // to updatePerson() for whichever person was last edited.
+  const modal = document.getElementById('add-person-modal');
+  if (modal) { const t = modal.querySelector('.modal-title'); if (t) t.textContent = 'Add New Person'; }
+  const apTitle = document.getElementById('ap-modal-title'); if (apTitle) apTitle.textContent = 'Add New Person';
+  const saveBtn = document.getElementById('ap-save-btn');
+  if (saveBtn) { saveBtn.innerHTML = '<i class="ti ti-check"></i> Save Person'; saveBtn.onclick = () => savePerson(); }
+  const familyTabBtn = document.querySelector('.ap-tab[data-tab="family"]');
+  const fanTabBtn = document.querySelector('.ap-tab[data-tab="fan"]');
+  if (familyTabBtn) familyTabBtn.style.display = '';
+  if (fanTabBtn) fanTabBtn.style.display = '';
+
   switchApTab('core');
 }
 
@@ -4175,7 +4394,7 @@ function saveFamilyBuilder(mainPersonId) {
     const np = { id: genId(), firstName: fn, lastName: ln, gender, status: 'unknown',
       birthDate: by ? `abt ${by}` : '', birthPlace: bp.trim(), deathDate: '', deathPlace: '',
       occupation: '', religion: '', aka: '', education: '', bio: '', dna: '',
-      familyLine: '', tags: [], photo: null, addedAt: new Date().toISOString() };
+      familyLine: '', tags: [], hasPhoto: false, addedAt: new Date().toISOString() };
     DB.people.push(np);
     if (np.birthDate) DB.events.push({ id: genId(), personId: np.id, type: 'birth', date: np.birthDate, place: np.birthPlace, confidence: 'estimated', desc: '', source: '' });
     count++;
@@ -4271,7 +4490,7 @@ function saveFanEntries(mainPersonId) {
       const np = { id: genId(), firstName: parts[0]||'', lastName: parts.slice(1).join(' ')||'',
         middleName:'', gender:'', status:'unknown', birthDate:'', birthPlace:'',
         deathDate:'', deathPlace:'', occupation:'', religion:'', aka:'',
-        education:'', bio:'', dna:'', familyLine:'', tags:['FAN'], photo:null,
+        education:'', bio:'', dna:'', familyLine:'', tags:['FAN'], hasPhoto:false,
         addedAt: new Date().toISOString() };
       DB.people.push(np);
       linkedId = np.id;
@@ -4279,6 +4498,40 @@ function saveFanEntries(mainPersonId) {
 
     DB.fans.push({ id: genId(), person1Id: mainPersonId, person2Id: linkedId, fanType: type, note, addedAt: new Date().toISOString() });
   });
+}
+
+function editFanEntry(id, viewerPersonId) {
+  const f = (DB.fans||[]).find(x => x.id === id);
+  if (!f) return;
+  const otherId = f.person1Id === viewerPersonId ? f.person2Id : f.person1Id;
+  const other = DB.people.find(x => x.id === otherId);
+  document.getElementById('fan-edit-id').value = id;
+  document.getElementById('fan-edit-other-name').textContent = other ? fullName(other) : 'this person';
+  const typeSel = document.getElementById('fan-edit-type');
+  typeSel.innerHTML = FAN_TYPES.map(t => `<option ${t===f.fanType?'selected':''}>${t}</option>`).join('');
+  document.getElementById('fan-edit-note').value = f.note || '';
+  openModal('edit-fan-modal');
+}
+
+function saveFanEntryEdit() {
+  const id = document.getElementById('fan-edit-id').value;
+  const f = (DB.fans||[]).find(x => x.id === id);
+  if (!f) { closeModal('edit-fan-modal'); return; }
+  f.fanType = document.getElementById('fan-edit-type').value;
+  f.note = document.getElementById('fan-edit-note').value.trim();
+  save();
+  closeModal('edit-fan-modal');
+  if (currentPersonId) openPersonDetail(currentPersonId);
+}
+
+function deleteFanEntry(id) {
+  const f = (DB.fans||[]).find(x => x.id === id);
+  if (!f) return;
+  if (!confirm('Remove this FAN Club entry? You can restore this from Trash later.')) return;
+  moveToTrash('fan', f);
+  DB.fans = DB.fans.filter(x => x.id !== id);
+  save();
+  if (currentPersonId) openPersonDetail(currentPersonId);
 }
 
 function previewPersonPhoto(input) {
@@ -4339,7 +4592,7 @@ function renderPeople(filter = '') {
     return `<div class="person-card" onclick="openPersonDetail('${p.id}')" style="border-left-color:${familyColor};">
       <div style="display:flex;gap:12px;align-items:flex-start;">
         <div class="card-avatar">
-          ${p.photo ? `<img src="${p.photo}">` : initials(p)}
+          ${blobCache[p.id] ? `<img src="${blobCache[p.id]}">` : initials(p)}
         </div>
         <div style="flex:1;min-width:0;">
           <div class="card-name">${fullName(p)}</div>
@@ -4414,7 +4667,7 @@ function openPersonDetail(id) {
   body.innerHTML = `
     <div style="display:flex;gap:20px;align-items:flex-start;margin-bottom:20px;">
       <div style="width:90px;height:90px;border-radius:50%;background:var(--parchment3);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:32px;font-family:var(--font-serif);overflow:hidden;flex-shrink:0;">
-        ${p.photo ? `<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;">` : initials(p)}
+        ${blobCache[p.id] ? `<img src="${blobCache[p.id]}" style="width:100%;height:100%;object-fit:cover;">` : initials(p)}
       </div>
       <div style="flex:1;">
         <div style="font-family:var(--font-serif);font-size:24px;color:var(--ink);">${fullName(p)}</div>
@@ -4456,10 +4709,14 @@ function openPersonDetail(id) {
           const otherId = r.person1Id===id ? r.person2Id : r.person1Id;
           const other   = DB.people.find(x=>x.id===otherId);
           const label   = relTypeLabel(r.type, r.person1Id===id);
-          return `<div style="font-size:13px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
+          return `<div style="font-size:13px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
             <span class="rel-badge rel-${r.type==='spouse'?'spouse':r.type==='parent'?(r.person1Id===id?'parent':'child'):'other'}">${label}</span>
-            <span style="cursor:pointer;color:var(--rust);" onclick="closeModal('person-full-modal');setTimeout(()=>openPersonDetail('${otherId}'),100)">
+            <span style="cursor:pointer;color:var(--rust);flex:1;" onclick="closeModal('person-full-modal');setTimeout(()=>openPersonDetail('${otherId}'),100)">
               ${other ? fullName(other) : 'Unknown'}
+            </span>
+            <span style="display:flex;gap:4px;flex-shrink:0;">
+              <i class="ti ti-edit" style="font-size:13px;color:var(--ink3);cursor:pointer;" title="Edit" onclick="editRelationship('${r.id}')"></i>
+              <i class="ti ti-trash" style="font-size:13px;color:var(--ink3);cursor:pointer;" title="Delete" onclick="deleteRelationship('${r.id}')"></i>
             </span>
           </div>`;
         }).join('') : '<div style="font-size:13px;color:var(--ink3);">No relationships added</div>'}
@@ -4495,7 +4752,7 @@ function openPersonDetail(id) {
         ${personPhotos.length
           ? `<div style="display:flex;gap:8px;flex-wrap:wrap;">${personPhotos.slice(0,6).map(ph=>`
               <div style="width:70px;height:70px;border-radius:var(--radius);overflow:hidden;background:var(--parchment2);border:1px solid var(--border);cursor:pointer;" onclick="viewPhoto('${ph.id}')">
-                ${ph.dataUrl ? `<img src="${ph.dataUrl}" style="width:100%;height:100%;object-fit:cover;">`
+                ${blobCache[ph.id] ? `<img src="${blobCache[ph.id]}" style="width:100%;height:100%;object-fit:cover;">`
                              : '<div style="height:100%;display:flex;align-items:center;justify-content:center;"><i class="ti ti-photo" style="font-size:20px;color:var(--sepia)"></i></div>'}
               </div>`).join('')}</div>`
           : '<div style="font-size:13px;color:var(--ink3);">No photos</div>'}
@@ -4516,10 +4773,14 @@ function openPersonDetail(id) {
         ${personFans.map(f => {
           const otherId = f.person1Id===id ? f.person2Id : f.person1Id;
           const other   = DB.people.find(x=>x.id===otherId);
-          return `<span class="fan-badge" onclick="closeModal('person-full-modal');setTimeout(()=>openPersonDetail('${otherId}'),100)">
-            <i class="ti ti-user" style="font-size:10px;"></i> ${other ? fullName(other) : '—'}
-            <span style="color:var(--ink3);font-size:10px;font-weight:400;">${f.fanType||'Associate'}</span>
-            ${f.note ? `<span style="font-size:10px;color:var(--ink3);">· ${f.note}</span>` : ''}
+          return `<span class="fan-badge">
+            <span style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;" onclick="closeModal('person-full-modal');setTimeout(()=>openPersonDetail('${otherId}'),100)">
+              <i class="ti ti-user" style="font-size:10px;"></i> ${other ? fullName(other) : '—'}
+              <span style="color:var(--ink3);font-size:10px;font-weight:400;">${f.fanType||'Associate'}</span>
+              ${f.note ? `<span style="font-size:10px;color:var(--ink3);">· ${f.note}</span>` : ''}
+            </span>
+            <i class="ti ti-edit" style="font-size:10px;margin-left:4px;" title="Edit" onclick="event.stopPropagation();editFanEntry('${f.id}','${id}')"></i>
+            <i class="ti ti-x" style="font-size:10px;" title="Remove" onclick="event.stopPropagation();deleteFanEntry('${f.id}')"></i>
           </span>`;
         }).join('')}
       </div>
@@ -4538,16 +4799,60 @@ function detailRow(label, value) {
   </div>`;
 }
 
+function resetRelForm() {
+  document.getElementById('rel-edit-id').value = '';
+  document.getElementById('rel-modal-title').textContent = 'Add Relationship';
+  document.getElementById('rel-modal-icon').className = 'ti ti-link';
+  document.getElementById('rel-save-btn').innerHTML = '<i class="ti ti-check"></i> Save Relationship';
+  document.getElementById('rel-person1').value = '';
+  document.getElementById('rel-type').value = 'parent';
+  document.getElementById('rel-person2').value = '';
+  document.getElementById('rel-extra').style.display = 'none';
+  document.getElementById('rel-marriage-date').value = '';
+  document.getElementById('rel-marriage-place').value = '';
+  document.getElementById('rel-notes').value = '';
+}
+
 function openRelModal(personId) {
   closeModal('person-full-modal');
+  resetRelForm();
   openModal('add-relationship-modal');
   setTimeout(() => {
     const sel = document.getElementById('rel-person1');
     if (sel) sel.value = personId;
-    document.getElementById('rel-type').addEventListener('change', function() {
-      document.getElementById('rel-extra').style.display = this.value === 'spouse' ? 'block' : 'none';
-    });
   }, 100);
+}
+
+function editRelationship(id) {
+  const r = DB.relationships.find(x => x.id === id);
+  if (!r) return;
+  closeModal('person-full-modal');
+  resetRelForm();
+  document.getElementById('rel-edit-id').value = id;
+  document.getElementById('rel-modal-title').textContent = 'Edit Relationship';
+  document.getElementById('rel-modal-icon').className = 'ti ti-pencil';
+  document.getElementById('rel-save-btn').innerHTML = '<i class="ti ti-check"></i> Save Changes';
+  openModal('add-relationship-modal');
+  setTimeout(() => {
+    document.getElementById('rel-person1').value = r.person1Id || '';
+    document.getElementById('rel-type').value = r.type || 'parent';
+    document.getElementById('rel-person2').value = r.person2Id || '';
+    document.getElementById('rel-extra').style.display = r.type === 'spouse' ? 'block' : 'none';
+    document.getElementById('rel-marriage-date').value = r.marriageDate || '';
+    document.getElementById('rel-marriage-place').value = r.marriagePlace || '';
+    document.getElementById('rel-notes').value = r.notes || '';
+  }, 100);
+}
+
+function deleteRelationship(id) {
+  const r = DB.relationships.find(x => x.id === id);
+  if (!r) return;
+  if (!confirm('Delete this relationship? You can restore this from Trash later.')) return;
+  moveToTrash('relationship', r);
+  DB.relationships = DB.relationships.filter(x => x.id !== id);
+  save();
+  if (currentPersonId) openPersonDetail(currentPersonId);
+  if (document.getElementById('panel-tree')?.classList.contains('active')) renderTree();
 }
 
 function deletePerson(id) {
@@ -4727,7 +5032,7 @@ function generateHints(personId) {
     hints.push({ type:'confidence', priority:'low', icon:'ti-shield-check', text:'Death date has no confidence rating', action:'Rate confidence', actionFn:`editPerson('${personId}')` });
 
   // No photo
-  if (!p.photo) hints.push({ type:'media', priority:'low', icon:'ti-camera', text:'No profile photo', action:'Add photo', actionFn:`editPerson('${personId}')` });
+  if (!p.hasPhoto) hints.push({ type:'media', priority:'low', icon:'ti-camera', text:'No profile photo', action:'Add photo', actionFn:`editPerson('${personId}')` });
 
   // No bio
   if (!p.bio) hints.push({ type:'research', priority:'low', icon:'ti-notes', text:'No biography written', action:'Add biography', actionFn:`editPerson('${personId}')` });
@@ -4818,8 +5123,8 @@ function editPerson(id) {
 
   // Show existing photo in preview
   const preview = document.getElementById('ap-photo-preview');
-  if (p.photo) {
-    preview.innerHTML = `<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  if (p.hasPhoto && blobCache[p.id]) {
+    preview.innerHTML = `<img src="${blobCache[p.id]}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
   } else {
     preview.innerHTML = '<i class="ti ti-user" style="font-size:24px;color:var(--ink3)"></i>';
   }
@@ -4832,6 +5137,28 @@ function editPerson(id) {
   const ddEl = document.getElementById('ap-death-doc');  if (ddEl) ddEl.value = fc.death?.docId || '';
   populateProofDocSelects();
 
+  // Family Builder & FAN tabs only apply when CREATING a person (they create+
+  // link new relatives at the same time) — updatePerson() never reads them, so
+  // filling them in while editing an existing person silently did nothing.
+  // Clear any stale values left over from a previous Add Person session and
+  // hide the tabs during edit so this isn't a confusing dead end. Use "Add
+  // Relationship" on the profile to link an existing person to relatives.
+  ['fb-father-fn','fb-father-ln','fb-father-by','fb-father-bp',
+   'fb-mother-fn','fb-mother-ln','fb-mother-by','fb-mother-bp',
+   'fb-spouse-fn','fb-spouse-ln','fb-spouse-md','fb-spouse-mp'].forEach(fid => {
+    const el = document.getElementById(fid); if (el) el.value = '';
+  });
+  ['fb-father-existing','fb-mother-existing','fb-spouse-existing'].forEach(fid => {
+    const el = document.getElementById(fid); if (el) el.value = '';
+  });
+  const sibList = document.getElementById('fb-siblings-list'); if (sibList) sibList.innerHTML = '';
+  const chiList = document.getElementById('fb-children-list'); if (chiList) chiList.innerHTML = '';
+  const fanList = document.getElementById('fan-entries-list'); if (fanList) fanList.innerHTML = '';
+  const familyTabBtn = document.querySelector('.ap-tab[data-tab="family"]');
+  const fanTabBtn = document.querySelector('.ap-tab[data-tab="fan"]');
+  if (familyTabBtn) familyTabBtn.style.display = 'none';
+  if (fanTabBtn) fanTabBtn.style.display = 'none';
+
   // Change modal title and save button to "edit" mode
   const modal = document.getElementById('add-person-modal');
   modal.querySelector('.modal-title').textContent = 'Edit Person';
@@ -4840,6 +5167,7 @@ function editPerson(id) {
   saveBtn.innerHTML = '<i class="ti ti-check"></i> Save Changes';
   saveBtn.onclick = () => updatePerson(id);
 
+  switchApTab('core');
   closeModal('person-full-modal');
   openModal('add-person-modal');
 }
@@ -4870,7 +5198,7 @@ function updatePerson(id) {
   p.tags      = document.getElementById('ap-tags').value.split(',').map(t => t.trim()).filter(Boolean);
 
   const previewImg = document.querySelector('#ap-photo-preview img');
-  if (previewImg) p.photo = previewImg.src;
+  if (previewImg) { p.hasPhoto = true; mediaPut(p.id, previewImg.src); }
 
   // Sync auto-created birth/death events
   if (!p.firstName && !p.lastName) { alert('Please enter at least a first or last name.'); return; }
@@ -5582,7 +5910,10 @@ function quickCreateFromCensusRow(rowId) {
   // Estimate birth year from age and census year
   const byEst = age ? (yr - parseInt(age)) : '';
 
-  // Populate the add-person modal
+  // Snapshot the doc modal so it can be restored after the person is saved,
+  // and remember to link the new person back into it (see savePerson()).
+  snapshotDocModalForQuickCreate();
+  closeModal('add-document-modal');
   openModal('add-person-modal');
   clearPersonForm();
   switchApTab('core');
@@ -5602,12 +5933,60 @@ function quickCreateFromField(fieldId, fieldLabel) {
   if (!input) return;
   const nameStr = input.value.trim();
   const parts   = nameStr.split(/\s+/);
+  snapshotDocModalForQuickCreate();
+  closeModal('add-document-modal');
   openModal('add-person-modal');
   clearPersonForm();
   switchApTab('core');
   document.getElementById('ap-firstname').value = parts[0] || '';
   document.getElementById('ap-lastname').value  = parts.slice(1).join(' ') || '';
   document.getElementById('ap-tags').value = fieldLabel.toLowerCase();
+}
+
+// Holds in-progress Add Document field values + the census rows array while
+// a quick-create person detour is in progress, so nothing typed is lost and
+// the new person can be added to "People Mentioned" once saved.
+window._docQuickCreateSnapshot = null;
+
+function snapshotDocModalForQuickCreate() {
+  const ids = ['doc-edit-id','doc-type-select','doc-title-input','doc-date','doc-place',
+    'doc-repository','doc-reference','doc-url','doc-notes'];
+  const values = {};
+  ids.forEach(id => { const el = document.getElementById(id); if (el) values[id] = el.value; });
+  const peopleSelect = document.getElementById('doc-people');
+  const maybeSelect = document.getElementById('doc-people-maybe');
+  window._docQuickCreateSnapshot = {
+    values,
+    peopleIds: peopleSelect ? Array.from(peopleSelect.selectedOptions).map(o => o.value) : [],
+    maybeIds: maybeSelect ? Array.from(maybeSelect.selectedOptions).map(o => o.value) : [],
+    censusRows: censusRows.map(r => ({ id: r.id, cells: { ...r.cells } })),
+    dynamicFieldsHtml: (document.getElementById('doc-dynamic-fields')||{}).innerHTML || ''
+  };
+}
+
+// Restores the Add Document modal after a quick-create detour and adds the
+// newly-created person to "People Mentioned" so the link isn't lost.
+function restoreDocModalAfterQuickCreate(newPersonId) {
+  const snap = window._docQuickCreateSnapshot;
+  window._docQuickCreateSnapshot = null;
+  if (!snap) return;
+
+  openModal('add-document-modal');
+  Object.entries(snap.values).forEach(([id, val]) => { const el = document.getElementById(id); if (el) el.value = val; });
+  updateDocForm(); // rebuild dynamic fields for the restored type (also restores census table UI)
+  if (document.getElementById('doc-type-select').value === 'census') {
+    censusRows = snap.censusRows;
+    renderCensusRows();
+  } else if (snap.dynamicFieldsHtml) {
+    const df = document.getElementById('doc-dynamic-fields');
+    if (df) df.innerHTML = snap.dynamicFieldsHtml;
+  }
+
+  const peopleIds = newPersonId ? [...new Set([...snap.peopleIds, newPersonId])] : snap.peopleIds;
+  const peopleSelect = document.getElementById('doc-people');
+  if (peopleSelect) Array.from(peopleSelect.options).forEach(o => { o.selected = peopleIds.includes(o.value); });
+  const maybeSelect = document.getElementById('doc-people-maybe');
+  if (maybeSelect) Array.from(maybeSelect.options).forEach(o => { o.selected = snap.maybeIds.includes(o.value); });
 }
 
 function resetDocForm() {
@@ -5644,7 +6023,15 @@ function editDocument(id) {
   openModal('add-document-modal');
   setTimeout(() => {
     document.getElementById('doc-type-select').value = d.docType;
-    updateDocForm();
+    if (d.docType === 'census') {
+      // Restore the saved household roster BEFORE rendering, so renderCensusForm doesn't reset to a blank row
+      censusRows = (d.censusRows || []).map(r => ({ id: r.id, cells: { ...r.cells } }));
+      updateDocForm();
+      const yrSel = document.getElementById('census-year-select');
+      if (yrSel && d.censusYear) { yrSel.value = d.censusYear; renderCensusForm(document.getElementById('doc-dynamic-fields')); }
+    } else {
+      updateDocForm();
+    }
     document.getElementById('doc-title-input').value = d.title || '';
     document.getElementById('doc-date').value = d.date || '';
     document.getElementById('doc-place').value = d.place || '';
@@ -5663,13 +6050,13 @@ function editDocument(id) {
     const maybeSel = document.getElementById('doc-people-maybe');
     if (maybeSel) Array.from(maybeSel.options).forEach(o => { o.selected = (d.unconfirmedPeopleIds||[]).includes(o.value); });
     // Existing file preview, if any
-    if (d.fileData) {
+    if (d.hasFile && blobCache[d.id]) {
       const filePreview = document.getElementById('doc-file-preview');
       filePreview.style.display = 'block';
-      if (d.fileData.startsWith('data:image')) {
-        filePreview.innerHTML = `<img src="${d.fileData}" style="max-height:160px;border-radius:var(--radius);border:1px solid var(--border);max-width:100%;">`;
+      if (blobCache[d.id].startsWith('data:image')) {
+        filePreview.innerHTML = `<img src="${blobCache[d.id]}" style="max-height:160px;border-radius:var(--radius);border:1px solid var(--border);max-width:100%;">`;
       } else {
-        filePreview.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--parchment2);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;">
+        filePreview.innerHTML = `<div class="doc-thumb" data-src="${blobCache[d.id]}" data-filename="${d.fileName || ''}" style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--parchment2);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;">
           <i class="ti ti-file" style="font-size:24px;color:var(--sepia)"></i>
           <div><div style="font-weight:500;">${d.fileName || 'Attached file'}</div></div>
         </div>`;
@@ -5682,16 +6069,37 @@ function saveDocument() {
   const editId = document.getElementById('doc-edit-id').value;
   const type = document.getElementById('doc-type-select').value;
   const fields = {};
-  (DOC_FORMS[type] || []).forEach(f => {
-    const el = document.getElementById(f.id);
-    if (el) fields[f.id] = el.value.trim();
-  });
+  // DOC_FORMS['census'] is the string 'DYNAMIC' (census uses its own table UI,
+  // not the f.id-keyed inputs other types use) — calling .forEach on a string
+  // throws and silently aborted every census save from this modal. Guard for
+  // an actual array before iterating.
+  const docFormFields = DOC_FORMS[type];
+  if (Array.isArray(docFormFields)) {
+    docFormFields.forEach(f => {
+      const el = document.getElementById(f.id);
+      if (el) fields[f.id] = el.value.trim();
+    });
+  }
   const peopleSelect = document.getElementById('doc-people');
   const peopleIds = Array.from(peopleSelect.selectedOptions).map(o => o.value);
   const maybeSelect = document.getElementById('doc-people-maybe');
   const unconfirmedPeopleIds = maybeSelect ? Array.from(maybeSelect.selectedOptions).map(o => o.value).filter(id => !peopleIds.includes(id)) : [];
 
-  const filePreview = document.querySelector('#doc-file-preview img, #doc-file-preview .doc-thumb');
+  // .doc-thumb is a <div> for non-image files (PDF/other) — divs have no
+  // .src property, so this previously always evaluated to undefined for
+  // non-image attachments. Re-saving an edited non-image document (without
+  // re-uploading the file) silently dropped the attachment every time. Now
+  // checks .src for images and the data-src attribute for the file div.
+  // fileName was also never actually being saved anywhere before now —
+  // viewDoc()/the editor always fell back to the generic "Attached file"/
+  // "attachment" label even when a real filename was available.
+  const filePreviewEl = document.querySelector('#doc-file-preview img, #doc-file-preview .doc-thumb');
+  const filePreviewSrc = filePreviewEl ? (filePreviewEl.src || filePreviewEl.dataset.src || '') : '';
+  const filePreviewName = filePreviewEl ? (filePreviewEl.dataset.filename || '') : '';
+  const isCensus = type === 'census';
+  const censusYear = isCensus ? (parseInt(document.getElementById('census-year-select')?.value) || 1880) : null;
+  // Snapshot the live census rows so the household roster actually survives a save (previously dropped entirely)
+  const censusSnapshot = isCensus ? censusRows.map(r => ({ id: r.id, cells: { ...r.cells } })) : null;
 
   if (editId) {
     const doc = DB.documents.find(x => x.id === editId);
@@ -5707,7 +6115,9 @@ function saveDocument() {
     doc.url = document.getElementById('doc-url').value.trim();
     doc.notes = document.getElementById('doc-notes').value.trim();
     doc.formFields = fields;
-    if (filePreview && filePreview.src) doc.fileData = filePreview.src;
+    if (isCensus) { doc.censusYear = censusYear; doc.censusRows = censusSnapshot; }
+    else { delete doc.censusYear; delete doc.censusRows; }
+    if (filePreviewSrc) { doc.hasFile = true; mediaPut(doc.id, filePreviewSrc); if (filePreviewName) doc.fileName = filePreviewName; }
     touchPlace(doc.place);
     if (!save()) return; // banner already shown by save(); keep the modal open so nothing typed is lost
     closeModal('add-document-modal');
@@ -5731,10 +6141,11 @@ function saveDocument() {
     url: document.getElementById('doc-url').value.trim(),
     notes: document.getElementById('doc-notes').value.trim(),
     formFields: fields,
-    fileData: null,
+    hasFile: false,
     addedAt: new Date().toISOString()
   };
-  if (filePreview && filePreview.src) doc.fileData = filePreview.src;
+  if (isCensus) { doc.censusYear = censusYear; doc.censusRows = censusSnapshot; }
+  if (filePreviewSrc) { doc.hasFile = true; mediaPut(doc.id, filePreviewSrc); if (filePreviewName) doc.fileName = filePreviewName; }
 
   DB.documents.push(doc);
   touchPlace(doc.place);
@@ -5758,7 +6169,10 @@ function handleDocFileUpload(input) {
     if (file.type.startsWith('image/')) {
       preview.innerHTML = `<img src="${e.target.result}" style="max-height:160px;border-radius:var(--radius);border:1px solid var(--border);max-width:100%;">`;
     } else {
-      preview.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--parchment2);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;">
+      // doc-thumb class + data-src attribute let saveDocument() find this
+      // file's data even though it's a <div>, not an <img> (divs have no
+      // .src property — see note in saveDocument).
+      preview.innerHTML = `<div class="doc-thumb" data-src="${e.target.result}" data-filename="${file.name}" style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--parchment2);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;">
         <i class="ti ti-file" style="font-size:24px;color:var(--sepia)"></i>
         <div><div style="font-weight:500;">${file.name}</div><div class="text-muted text-sm">${(file.size/1024).toFixed(1)} KB</div></div>
       </div>`;
@@ -5828,7 +6242,11 @@ function renderDocs() {
 }
 
 function renderDocForms(container) {
-  const formTypes = Object.keys(DOC_FORMS);
+  // census is 'DYNAMIC' (its own table-based UI, not an f.id field list) so it
+  // can't be rendered as a standard form card here — exclude it to avoid a
+  // crash on click; census documents are created from the main Add Document
+  // modal, which has its own household-roster table.
+  const formTypes = Object.keys(DOC_FORMS).filter(type => Array.isArray(DOC_FORMS[type]));
   container.innerHTML = `
     <div style="margin-bottom:20px;">
       <div class="section-title"><i class="ti ti-forms"></i> Document Forms</div>
@@ -5841,11 +6259,15 @@ function renderDocForms(container) {
             <div style="font-size:11px;color:var(--ink3);">${(DOC_FORMS[type]||[]).length} standard fields</div>
           </div>`).join('')}
       </div>
+      <div style="font-size:12px;color:var(--ink3);margin-top:14px;">Census records use the household roster table — add those from the main "+ Add Document" button instead.</div>
     </div>`;
 }
 
 function openDocForm(type) {
-  const fields = DOC_FORMS[type] || [];
+  // Guard against DOC_FORMS['census'] === 'DYNAMIC' (a string, not an array) —
+  // census is already excluded from the clickable card list in renderDocForms(),
+  // this is a fallback in case openDocForm() is ever called directly with it.
+  const fields = Array.isArray(DOC_FORMS[type]) ? DOC_FORMS[type] : [];
   document.getElementById('doc-form-title').textContent = `${type.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())} Record Form`;
   document.getElementById('doc-form-body').innerHTML = `
     <div style="font-size:13px;color:var(--ink3);margin-bottom:16px;">Fill in the details from your ${type} document. Leave blank any fields not present in your record.</div>
@@ -5866,7 +6288,7 @@ function openDocForm(type) {
 
 function saveDocForm() {
   const type = document.getElementById('dform-type').value;
-  const fields = DOC_FORMS[type] || [];
+  const fields = Array.isArray(DOC_FORMS[type]) ? DOC_FORMS[type] : [];
   const formFields = {};
   fields.forEach(f => {
     const el = document.getElementById('dform-' + f.id);
@@ -5928,14 +6350,15 @@ function viewDoc(id) {
 
   // File/image preview if stored
   let filePreview = '';
-  if (d.fileData) {
-    if (d.fileData.startsWith('data:image')) {
-      filePreview = `<img src="${d.fileData}" style="max-width:100%;border-radius:var(--radius);margin-bottom:16px;border:1px solid var(--border);">`;
-    } else if (d.fileData.startsWith('data:application/pdf')) {
+  const docBlob = blobCache[d.id];
+  if (d.hasFile && docBlob) {
+    if (docBlob.startsWith('data:image')) {
+      filePreview = `<img src="${docBlob}" style="max-width:100%;border-radius:var(--radius);margin-bottom:16px;border:1px solid var(--border);">`;
+    } else if (docBlob.startsWith('data:application/pdf')) {
       filePreview = `<div style="margin-bottom:16px;">
-        <iframe src="${d.fileData}" style="width:100%;height:420px;border:1px solid var(--border);border-radius:var(--radius);background:#fff;"></iframe>
+        <iframe src="${docBlob}" style="width:100%;height:420px;border:1px solid var(--border);border-radius:var(--radius);background:#fff;"></iframe>
         <div style="margin-top:6px;font-size:12px;color:var(--ink3);">
-          <a href="${d.fileData}" download="${d.fileName||'document.pdf'}" style="color:var(--gold);text-decoration:none;"><i class="ti ti-download" style="font-size:11px;"></i> Download PDF</a>
+          <a href="${docBlob}" download="${d.fileName||'document.pdf'}" style="color:var(--gold);text-decoration:none;"><i class="ti ti-download" style="font-size:11px;"></i> Download PDF</a>
         </div>
       </div>`;
     } else {
@@ -5946,15 +6369,34 @@ function viewDoc(id) {
           <div style="font-size:13px;font-weight:500;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${fname}</div>
           <div style="font-size:11px;color:var(--ink3);">Attached file</div>
         </div>
-        <a href="${d.fileData}" download="${fname}" style="color:var(--gold);font-size:12px;text-decoration:none;white-space:nowrap;"><i class="ti ti-download" style="font-size:12px;"></i> Download</a>
+        <a href="${docBlob}" download="${fname}" style="color:var(--gold);font-size:12px;text-decoration:none;white-space:nowrap;"><i class="ti ti-download" style="font-size:12px;"></i> Download</a>
       </div>`;
     }
+  }
+
+  // Census household roster, if this is a census document with saved rows
+  let censusHtml = '';
+  if (d.docType === 'census' && d.censusRows && d.censusRows.length) {
+    const schema = CENSUS_SCHEMAS[d.censusYear] || CENSUS_SCHEMAS[1880];
+    censusHtml = `<div style="margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:8px;">${d.censusYear || ''} Household Roster</div>
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+        <table class="census-table" style="width:100%;">
+          <thead><tr><th style="width:24px;">#</th>${schema.cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+          <tbody>${d.censusRows.map((row,i) => `<tr>
+            <td style="text-align:center;color:var(--ink3);">${i+1}</td>
+            ${schema.cols.map(col => { const key = col.replace(/[^a-zA-Z0-9]/g,'_'); return `<td>${row.cells[key]||''}</td>`; }).join('')}
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
   }
 
   document.getElementById('vdm-body').innerHTML = `
     <div style="padding:20px;">
       ${filePreview}
       ${metaRows ? `<div style="margin-bottom:16px;">${metaRows}</div>` : ''}
+      ${censusHtml}
       ${fieldHtml ? `<div style="margin-bottom:16px;"><div style="font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:8px;">Form Fields</div>${fieldHtml}</div>` : ''}
       ${d.notes ? `<div style="margin-top:16px;padding:12px;background:var(--parchment2);border-radius:var(--radius);font-size:13px;color:var(--ink2);line-height:1.6;">${d.notes}</div>` : ''}
     </div>`;
@@ -6002,9 +6444,11 @@ function savePhoto() {
   imgs.forEach(img => {
     const id = genId();
     newIds.push(id);
+    const blobSrc = img.dataset.src || img.src;
+    mediaPut(id, blobSrc);
     DB.photos.push({
       id,
-      dataUrl: img.dataset.src || img.src,
+      hasPhoto: true,
       caption: document.getElementById('photo-caption').value.trim(),
       type: document.getElementById('photo-type').value,
       date: document.getElementById('photo-date').value.trim(),
@@ -6019,6 +6463,7 @@ function savePhoto() {
   });
 
   if (!save()) {
+    newIds.forEach(id => mediaDelete(id)); // roll back the blobs too
     DB.photos = DB.photos.filter(p => !newIds.includes(p.id)); // roll back
     return; // banner already shown by save(); keep the modal open so nothing is lost
   }
@@ -6045,7 +6490,7 @@ function renderGallery() {
   container.innerHTML = `<div class="gallery-grid">${photos.map(ph => {
     const people = (ph.peopleIds||[]).map(pid => { const p = DB.people.find(x=>x.id===pid); return p ? (p.firstName||fullName(p)) : ''; }).filter(Boolean);
     return `<div class="gallery-item" onclick="viewPhoto('${ph.id}')">
-      ${ph.dataUrl ? `<img src="${ph.dataUrl}" alt="${ph.caption||''}">` : `<div class="gallery-placeholder"><i class="ti ti-photo"></i><span>${ph.type||'Photo'}</span></div>`}
+      ${blobCache[ph.id] ? `<img src="${blobCache[ph.id]}" alt="${ph.caption||''}">` : `<div class="gallery-placeholder"><i class="ti ti-photo"></i><span>${ph.type||'Photo'}</span></div>`}
       <div class="gallery-overlay">
         <div style="font-weight:500;">${ph.caption||ph.date||''}</div>
         <div style="color:rgba(255,255,255,0.8);font-size:10px;margin-top:2px;">${people.join(', ')}</div>
@@ -6079,8 +6524,9 @@ function viewPhoto(id) {
     ph.source   ? `<span><i class="ti ti-book" style="font-size:12px;"></i> ${ph.source}</span>` : '',
   ].filter(Boolean).join('');
 
-  // The actual stored field is dataUrl (one image per photo record) — images/src never existed in savePhoto.
-  const imgSrc = ph.dataUrl || (Array.isArray(ph.images) ? ph.images[0] : ph.src) || '';
+  // The actual stored field used to be dataUrl; photo bytes now live in
+  // blobCache (backed by IndexedDB), keyed by the photo's id.
+  const imgSrc = blobCache[ph.id] || '';
   const imgHtml = imgSrc
     ? `<div id="vpm-img-wrap" style="background:#000;text-align:center;position:relative;user-select:none;">
         <img src="${imgSrc}" id="vpm-main-img" style="max-height:420px;max-width:100%;object-fit:contain;display:block;margin:0 auto;">
@@ -6779,10 +7225,27 @@ function seedInitialBugs() {
 
 // ── RELATIONSHIPS ────────────────────────────────────────────────
 function saveRelationship() {
+  const editId = document.getElementById('rel-edit-id').value;
   const p1 = document.getElementById('rel-person1').value;
   const p2 = document.getElementById('rel-person2').value;
   const type = document.getElementById('rel-type').value;
   if (!p1 || !p2 || p1 === p2) { alert('Please select two different people.'); return; }
+
+  if (editId) {
+    const r = DB.relationships.find(x => x.id === editId);
+    if (!r) { closeModal('add-relationship-modal'); return; }
+    r.person1Id = p1;
+    r.person2Id = p2;
+    r.type = type;
+    r.marriageDate = document.getElementById('rel-marriage-date')?.value?.trim() || '';
+    r.marriagePlace = document.getElementById('rel-marriage-place')?.value?.trim() || '';
+    r.notes = document.getElementById('rel-notes').value.trim();
+    save();
+    closeModal('add-relationship-modal');
+    if (currentPersonId) openPersonDetail(currentPersonId);
+    if (document.getElementById('panel-tree')?.classList.contains('active')) renderTree();
+    return;
+  }
 
   DB.relationships.push({
     id: genId(),
@@ -6796,6 +7259,8 @@ function saveRelationship() {
   });
   save();
   closeModal('add-relationship-modal');
+  if (currentPersonId) openPersonDetail(currentPersonId);
+  if (document.getElementById('panel-tree')?.classList.contains('active')) renderTree();
 }
 
 // ── FAMILY LINES ─────────────────────────────────────────────────
@@ -6956,8 +7421,8 @@ function renderTree() {
     html += `<g class="tree-person-node" onclick="openPersonDetail('${n.personId}')">
       <rect x="${x}" y="${y}" width="${NODE_W}" height="${NODE_H}" rx="8" ry="8"
         fill="${fillCol}" stroke="${strokeCol}" stroke-width="${strokeW}"/>
-      ${p.photo ? `<clipPath id="clip-${n.personId}"><circle cx="${x+22}" cy="${y+NODE_H/2}" r="20"/></clipPath>
-        <image href="${p.photo}" x="${x+2}" y="${y+NODE_H/2-20}" width="40" height="40" clip-path="url(#clip-${n.personId})" preserveAspectRatio="xMidYMid slice"/>
+      ${blobCache[p.id] ? `<clipPath id="clip-${n.personId}"><circle cx="${x+22}" cy="${y+NODE_H/2}" r="20"/></clipPath>
+        <image href="${blobCache[p.id]}" x="${x+2}" y="${y+NODE_H/2-20}" width="40" height="40" clip-path="url(#clip-${n.personId})" preserveAspectRatio="xMidYMid slice"/>
         <circle cx="${x+22}" cy="${y+NODE_H/2}" r="20" fill="none" stroke="${strokeCol}" stroke-width="1"/>` :
       `<circle cx="${x+22}" cy="${y+NODE_H/2}" r="18" fill="${strokeCol}" opacity="0.12"/>
         <text x="${x+22}" y="${y+NODE_H/2+6}" text-anchor="middle" font-size="14" font-family="Georgia,serif" fill="${strokeCol}">${initials(p)}</text>`}
@@ -7070,7 +7535,7 @@ function importGEDCOM(text) {
     if (lvl === 0 && xref) {
       if (currentType === 'INDI' && current) { DB.people.push(current); count.people++; }
       if (tag === 'INDI') {
-        current = { id: xref, firstName: '', lastName: '', gender: '', birthDate: '', birthPlace: '', deathDate: '', deathPlace: '', bio: '', tags: [], photo: null, status: 'unknown', addedAt: new Date().toISOString() };
+        current = { id: xref, firstName: '', lastName: '', gender: '', birthDate: '', birthPlace: '', deathDate: '', deathPlace: '', bio: '', tags: [], hasPhoto: false, status: 'unknown', addedAt: new Date().toISOString() };
         currentType = 'INDI';
       } else if (tag === 'FAM') {
         currentType = 'FAM';
@@ -7139,11 +7604,20 @@ function importJSON(text) {
   try {
     const data = JSON.parse(text);
     let count = { people: 0, families: 0, events: 0 };
-    if (data.people) { DB.people = DB.people.concat(data.people); count.people = data.people.length; }
+    if (data.people) {
+      data.people.forEach(p => { if (p.photo) { mediaPut(p.id, p.photo); p.hasPhoto = true; delete p.photo; } });
+      DB.people = DB.people.concat(data.people); count.people = data.people.length;
+    }
     if (data.events) { DB.events = DB.events.concat(data.events); count.events = data.events.length; }
     if (data.relationships) { DB.relationships = DB.relationships.concat(data.relationships); count.families = data.relationships.length; }
-    if (data.documents) DB.documents = DB.documents.concat(data.documents);
-    if (data.photos) DB.photos = DB.photos.concat(data.photos);
+    if (data.documents) {
+      data.documents.forEach(d => { if (d.fileData) { mediaPut(d.id, d.fileData); d.hasFile = true; delete d.fileData; } });
+      DB.documents = DB.documents.concat(data.documents);
+    }
+    if (data.photos) {
+      data.photos.forEach(ph => { if (ph.dataUrl) { mediaPut(ph.id, ph.dataUrl); ph.hasPhoto = true; delete ph.dataUrl; } });
+      DB.photos = DB.photos.concat(data.photos);
+    }
     return count;
   } catch(e) { alert('Invalid JSON file.'); return {people:0,families:0,events:0}; }
 }
@@ -7167,7 +7641,7 @@ function importCSV(text) {
       deathPlace: row['death place'] || '',
       gender: row['gender'] || row['sex'] || '',
       occupation: row['occupation'] || '',
-      tags: [], photo: null, status: 'unknown', addedAt: new Date().toISOString()
+      tags: [], hasPhoto: false, status: 'unknown', addedAt: new Date().toISOString()
     });
     count++;
   }
@@ -7221,7 +7695,11 @@ function buildGEDCOM() {
 }
 
 function exportJSON() {
-  const json = JSON.stringify(DB, null, 2);
+  const full = JSON.parse(JSON.stringify(DB));
+  full.photos.forEach(ph => { if (blobCache[ph.id]) ph.dataUrl = blobCache[ph.id]; });
+  full.documents.forEach(d => { if (blobCache[d.id]) d.fileData = blobCache[d.id]; });
+  full.people.forEach(p => { if (blobCache[p.id]) p.photo = blobCache[p.id]; });
+  const json = JSON.stringify(full, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -7357,50 +7835,14 @@ function updateGistHeaderIndicator() {
   setSyncIndicator(gistSettings.token && gistSettings.gistId ? 'configured' : 'idle');
 }
 
-// Strip large base64 photo data from the payload before uploading to Gist.
-// Photos are kept in localStorage only; the Gist holds everything else.
+// Photos/document files/profile photos now live in IndexedDB, never in DB
+// itself — DB only ever holds the hasPhoto/hasFile boolean flags. So there's
+// nothing left to strip before uploading to Gist; this just stringifies DB.
+// (Gist sync has never transferred actual image bytes between devices — only
+// metadata — so a flag pulled from another device with no matching local
+// blob is the same pre-existing limitation as before this session.)
 function serializeForGist() {
-  const stripped = JSON.parse(JSON.stringify(DB));
-  // Keep photo metadata (caption, date, tags) but zero out the base64 data
-  (stripped.photos || []).forEach(ph => { ph._hasData = !!ph.dataUrl; ph.dataUrl = null; });
-  // Same for person profile photos
-  (stripped.people || []).forEach(p => { p._hasPhoto = !!p.photo; p.photo = null; });
-  // Same for document file data
-  (stripped.documents || []).forEach(d => { d._hasFile = !!d.fileData; d.fileData = null; });
-  return JSON.stringify(stripped);
-}
-
-// After pulling from Gist, restore local media back into the merged data
-function reattachLocalMedia(remoteDB) {
-  const localRaw = localStorage.getItem(DB_KEY);
-  if (!localRaw) return remoteDB;
-  let localDB;
-  try { localDB = JSON.parse(localRaw); } catch(e) { return remoteDB; }
-  // Restore photos
-  (remoteDB.photos || []).forEach(rph => {
-    if (rph._hasData) {
-      const lph = (localDB.photos || []).find(x => x.id === rph.id);
-      if (lph?.dataUrl) rph.dataUrl = lph.dataUrl;
-      delete rph._hasData;
-    }
-  });
-  // Restore person photos
-  (remoteDB.people || []).forEach(rp => {
-    if (rp._hasPhoto) {
-      const lp = (localDB.people || []).find(x => x.id === rp.id);
-      if (lp?.photo) rp.photo = lp.photo;
-      delete rp._hasPhoto;
-    }
-  });
-  // Restore document file data
-  (remoteDB.documents || []).forEach(rd => {
-    if (rd._hasFile) {
-      const ld = (localDB.documents || []).find(x => x.id === rd.id);
-      if (ld?.fileData) rd.fileData = ld.fileData;
-      delete rd._hasFile;
-    }
-  });
-  return remoteDB;
+  return JSON.stringify(DB);
 }
 
 // ── Chunked serialization
@@ -7573,9 +8015,9 @@ async function gistPull(fromModal = false) {
       DB.dnaKits       = mergeArray(DB.dnaKits||[],   remoteDB.dnaKits       || []);
       DB.settings      = Object.assign(DB.settings,  remoteDB.settings      || {});
     } else {
-      // local wins or remote wins — just replace entirely
-      const withMedia = reattachLocalMedia(remoteDB);
-      Object.assign(DB, withMedia);
+      // local wins or remote wins — just replace entirely. (Blobs themselves
+      // were never part of this payload — see serializeForGist note above.)
+      Object.assign(DB, remoteDB);
       if (!DB.dnaKits) DB.dnaKits = [];
     }
 
@@ -7691,6 +8133,7 @@ function updateSyncIndicator(connected) {
 function confirmClearData() {
   if (confirm('Delete ALL data? This cannot be undone.')) {
     localStorage.removeItem(DB_KEY);
+    indexedDB.deleteDatabase(MEDIA_DB_NAME);
     location.reload();
   }
 }
@@ -7724,7 +8167,7 @@ function renderDashRecent() {
   container.innerHTML = recent.map(p => `
     <div class="person-card" onclick="openPersonDetail('${p.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;">
       <div class="card-avatar" style="width:36px;height:36px;font-size:14px;">
-        ${p.photo ? `<img src="${p.photo}">` : initials(p)}
+        ${blobCache[p.id] ? `<img src="${blobCache[p.id]}">` : initials(p)}
       </div>
       <div>
         <div class="card-name" style="font-size:14px;">${fullName(p)}</div>
@@ -7895,8 +8338,8 @@ function renderUsearchLanding() {
 }
 
 function usearchPersonItem(p, idx) {
-  const initHtml = p.photo
-    ? `<img src="${p.photo}">`
+  const initHtml = blobCache[p.id]
+    ? `<img src="${blobCache[p.id]}">`
     : `<span style="font-family:var(--font-serif);font-size:13px;">${initials(p)}</span>`;
   const sub = [p.birthDate && `b. ${p.birthDate}`, p.birthPlace, p.deathDate && `d. ${p.deathDate}`].filter(Boolean).join(' · ') || p.occupation || '';
   return `<div class="usearch-item" data-action="person:${p.id}">
@@ -8015,7 +8458,7 @@ function runUniversalSearch(raw) {
   if (results.people.length) {
     html += `<p class="usearch-group-label">People (${results.people.length})</p>`;
     html += results.people.slice(0,cap(8)).map(p => {
-      const initHtml = p.photo ? `<img src="${p.photo}">` : `<span style="font-family:var(--font-serif);font-size:13px;">${initials(p)}</span>`;
+      const initHtml = blobCache[p.id] ? `<img src="${blobCache[p.id]}">` : `<span style="font-family:var(--font-serif);font-size:13px;">${initials(p)}</span>`;
       const sub = [p.birthDate&&`b. ${p.birthDate}`, p.birthPlace, p.deathDate&&`d. ${p.deathDate}`].filter(Boolean).join(' · ') || p.occupation || '';
       return `<div class="usearch-item" data-action="person:${p.id}">
         <div class="usearch-item-icon">${initHtml}</div>
@@ -8055,7 +8498,7 @@ function runUniversalSearch(raw) {
   if (results.photos.length) {
     html += `<p class="usearch-group-label">Photos (${results.photos.length})</p>`;
     html += results.photos.slice(0,cap(4)).map(ph => `<div class="usearch-item" data-action="photo:${ph.id}">
-      <div class="usearch-item-icon">${ph.dataUrl?`<img src="${ph.dataUrl}">`:'<i class="ti ti-photo"></i>'}</div>
+      <div class="usearch-item-icon">${blobCache[ph.id]?`<img src="${blobCache[ph.id]}">`:'<i class="ti ti-photo"></i>'}</div>
       <div class="usearch-item-main">
         <div class="usearch-item-title">${highlight(ph.caption||'Untitled photo',raw)}</div>
         <div class="usearch-item-sub">${highlight(ph.date||'',raw)} · ${highlight(ph._people||'',raw)}</div>
@@ -8507,7 +8950,6 @@ function openExtForHint(personId) {
 // ── INIT ──────────────────────────────────────────────────────────
 load();
 seedInitialBugs();
-updateDashStats();
 updateSidebarStats();
 updateTreeRootSelect();
 refreshFamilyLines();
@@ -8515,10 +8957,18 @@ refreshPersonSelects();
 refreshCustomDocTypeOptions();
 updateTrashBadge();
 loadSettings();
-renderDashRecent();
-renderDashTasks();
 if (DB.settings.ancestryToken) updateSyncIndicator(true);
 // Gist settings loaded by autoSyncOnLoad() above
+
+// Photos/document files/profile photos live in IndexedDB and load
+// asynchronously. Everything above doesn't depend on them. Everything below
+// (dashboard stats/recents, which show photo thumbnails) waits for the media
+// store so thumbnails are present on first paint instead of popping in late.
+initMedia().then(() => {
+  updateDashStats();
+  renderDashRecent();
+  renderDashTasks();
+});
 
 // Initialize document form fields on open
 document.getElementById('add-document-modal').addEventListener('click', function() {
@@ -9038,8 +9488,8 @@ function editPhoto(id) {
   if (!ph) return;
   // Preview
   const prev = document.getElementById('eph-preview');
-  prev.innerHTML = ph.dataUrl
-    ? `<img src="${ph.dataUrl}" style="max-height:140px;max-width:100%;border-radius:var(--radius);border:1px solid var(--border);">`
+  prev.innerHTML = blobCache[ph.id]
+    ? `<img src="${blobCache[ph.id]}" style="max-height:140px;max-width:100%;border-radius:var(--radius);border:1px solid var(--border);">`
     : `<div style="height:80px;display:flex;align-items:center;justify-content:center;color:var(--ink3);font-size:32px;"><i class="ti ti-photo"></i></div>`;
   document.getElementById('eph-caption').value  = ph.caption  || '';
   document.getElementById('eph-type').value     = ph.type     || 'portrait';
@@ -9147,7 +9597,7 @@ function renderReportStats() {
   if (!el) return;
   const livingCount = DB.people.filter(p=>p.status==='living').length;
   const deceasedCount = DB.people.filter(p=>p.status==='deceased').length;
-  const withPhotos = DB.people.filter(p=>p.photo).length;
+  const withPhotos = DB.people.filter(p=>p.hasPhoto).length;
   const withBirth = DB.people.filter(p=>p.birthDate).length;
   const withDeath = DB.people.filter(p=>p.deathDate).length;
   const avgAge = (() => {
@@ -9195,7 +9645,7 @@ function loadSampleData() {
     { id: 'sp_5', firstName: 'Robert', lastName: 'Hartwell', gender: 'M', status: 'living', birthDate: '11 Oct 1940', birthPlace: 'Chicago, Illinois, USA', occupation: 'Retired electrician', religion: 'Catholic', familyLine: 'Hartwell paternal', tags: ['living'], bio: 'Robert is the youngest child of Thomas and Eleanor. Retired in 2005.' },
   ];
 
-  samplePeople.forEach(p => { p.photo = null; p.addedAt = new Date().toISOString(); if (!p.aka) p.aka = ''; if (!p.education) p.education = ''; if (!p.dna) p.dna = ''; DB.people.push(p); });
+  samplePeople.forEach(p => { p.hasPhoto = false; p.addedAt = new Date().toISOString(); if (!p.aka) p.aka = ''; if (!p.education) p.education = ''; if (!p.dna) p.dna = ''; DB.people.push(p); });
 
   DB.relationships.push(
     { id: 'sr_1', person1Id: 'sp_1', person2Id: 'sp_2', type: 'spouse', marriageDate: '18 Jun 1903', marriagePlace: 'St. Patrick Church, Chicago, IL', addedAt: new Date().toISOString() },
