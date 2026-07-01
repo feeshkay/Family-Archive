@@ -6066,9 +6066,6 @@ function editDocument(id) {
 }
 
 function saveDocument() {
-  try { _saveDocumentInner(); } catch(e) { alert('Save error (please screenshot this):\n' + e.message + '\n\n' + (e.stack||'').split('\n').slice(0,4).join('\n')); }
-}
-function _saveDocumentInner() {
   const editId = document.getElementById('doc-edit-id').value;
   const type = document.getElementById('doc-type-select').value;
   const fields = {};
@@ -8982,9 +8979,9 @@ initMedia().then(() => {
 });
 
 // Initialize document form fields on open
-document.getElementById('add-document-modal').addEventListener('click', function() {
-  if (!document.getElementById('doc-dynamic-fields').innerHTML) updateDocForm();
-});
+// Note: updateDocForm() is called by the type selector onchange and on modal
+// open (resetDocForm / editDoc) — a modal-level click listener that called it
+// on every tap was removed because it intercepted the Save button tap on iOS.
 
 // Sort people on change
 document.getElementById('people-sort').addEventListener('change', () => renderPeople());
