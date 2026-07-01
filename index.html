@@ -6094,7 +6094,11 @@ function saveDocument() {
   // viewDoc()/the editor always fell back to the generic "Attached file"/
   // "attachment" label even when a real filename was available.
   const filePreviewEl = document.querySelector('#doc-file-preview img, #doc-file-preview .doc-thumb');
-  const filePreviewSrc = filePreviewEl ? (filePreviewEl.src || filePreviewEl.dataset.src || '') : '';
+  const rawSrc = filePreviewEl ? (filePreviewEl.getAttribute('src') || filePreviewEl.dataset.src || '') : '';
+  // getAttribute('src') returns the literal attribute string, unlike .src which
+  // on a broken/unrenderable image resolves to the page's own URL. Only treat
+  // it as a valid file if it's actually a data URL.
+  const filePreviewSrc = rawSrc.startsWith('data:') ? rawSrc : '';
   const filePreviewName = filePreviewEl ? (filePreviewEl.dataset.filename || '') : '';
   const isCensus = type === 'census';
   const censusYear = isCensus ? (parseInt(document.getElementById('census-year-select')?.value) || 1880) : null;
@@ -6166,7 +6170,11 @@ function handleDocFileUpload(input) {
   preview.style.display = 'block';
   const reader = new FileReader();
   reader.onload = e => {
-    if (file.type.startsWith('image/')) {
+    // Only use an <img> tag for formats browsers can actually render inline.
+    // TIFF is image/* but Safari/iOS can't display it — the img.src resolves
+    // to the page URL instead of the data URL, which corrupts the save.
+    const RENDERABLE = ['image/jpeg','image/png','image/gif','image/webp','image/svg+xml','image/bmp'];
+    if (file.type.startsWith('image/') && RENDERABLE.includes(file.type)) {
       preview.innerHTML = `<img src="${e.target.result}" style="max-height:160px;border-radius:var(--radius);border:1px solid var(--border);max-width:100%;">`;
     } else {
       // doc-thumb class + data-src attribute let saveDocument() find this
