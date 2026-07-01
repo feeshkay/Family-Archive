@@ -6066,6 +6066,9 @@ function editDocument(id) {
 }
 
 function saveDocument() {
+  try { _saveDocumentInner(); } catch(e) { alert('Save error (please screenshot this):\n' + e.message + '\n\n' + (e.stack||'').split('\n').slice(0,4).join('\n')); }
+}
+function _saveDocumentInner() {
   const editId = document.getElementById('doc-edit-id').value;
   const type = document.getElementById('doc-type-select').value;
   const fields = {};
