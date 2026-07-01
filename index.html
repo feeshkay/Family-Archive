@@ -6153,11 +6153,15 @@ function saveDocument() {
 
   DB.documents.push(doc);
   touchPlace(doc.place);
+  alert('DEBUG 1: about to call save()');
   if (!save()) {
-    DB.documents = DB.documents.filter(x => x.id !== doc.id); // roll back so it doesn't sit in memory pretending to be saved
-    return; // banner already shown by save(); keep the modal open so nothing typed is lost
+    DB.documents = DB.documents.filter(x => x.id !== doc.id);
+    alert('DEBUG: save() returned false');
+    return;
   }
+  alert('DEBUG 2: save() succeeded, calling closeModal');
   closeModal('add-document-modal');
+  alert('DEBUG 3: closeModal done, calling renderDocs');
   renderDocs();
   if (currentPersonId) openPersonDetail(currentPersonId);
   if (document.getElementById('panel-timeline')?.classList.contains('active')) renderTimeline();
